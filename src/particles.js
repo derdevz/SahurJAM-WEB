@@ -64,6 +64,45 @@ export class ParticleSystem {
       return;
     }
 
+    if (type === "upgradeBurst") {
+      const count = options.count || 10;
+      for (let i = 0; i < count; i += 1) {
+        this.particles.push({
+          type,
+          x,
+          y,
+          vx: rand(-130, 130),
+          vy: rand(-140, 40),
+          life: 900,
+          maxLife: 900,
+          size: rand(4, 8),
+          color: options.color || "#f2dd83",
+          alpha: 1,
+          rotate: rand(0, Math.PI * 2)
+        });
+      }
+      return;
+    }
+
+    if (type === "pickupBurst") {
+      const count = options.count || 8;
+      for (let i = 0; i < count; i += 1) {
+        this.particles.push({
+          type,
+          x,
+          y,
+          vx: rand(-70, 70),
+          vy: rand(-120, -35),
+          life: 650,
+          maxLife: 650,
+          size: rand(3, 5),
+          color: options.color || "#f2dd83",
+          alpha: 1
+        });
+      }
+      return;
+    }
+
     if (type === "popup" || type === "warning") {
       this.particles.push({
         type,
@@ -84,8 +123,12 @@ export class ParticleSystem {
   update(delta) {
     for (const p of this.particles) {
       p.life -= delta;
-      if (p.type === "sparkle") {
+      if (p.type === "sparkle" || p.type === "pickupBurst") {
         p.vy += 120 * (delta / 1000);
+      } else if (p.type === "upgradeBurst") {
+        p.vx *= 0.985;
+        p.vy += 80 * (delta / 1000);
+        p.rotate += delta * 0.008;
       }
       p.x += p.vx * (delta / 1000);
       p.y += p.vy * (delta / 1000);
@@ -106,20 +149,25 @@ export class ParticleSystem {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
-      } else if (p.type === "sparkle") {
+      } else if (p.type === "sparkle" || p.type === "pickupBurst") {
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.moveTo(p.x, p.y - p.size);
-        ctx.lineTo(p.x + p.size * 0.5, p.y - p.size * 0.2);
-        ctx.lineTo(p.x + p.size, p.y);
-        ctx.lineTo(p.x + p.size * 0.5, p.y + p.size * 0.2);
-        ctx.lineTo(p.x, p.y + p.size);
-        ctx.lineTo(p.x - p.size * 0.5, p.y + p.size * 0.2);
-        ctx.lineTo(p.x - p.size, p.y);
-        ctx.lineTo(p.x - p.size * 0.5, p.y - p.size * 0.2);
-        ctx.closePath();
-        ctx.fill();
+        if (p.type === "pickupBurst") {
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.moveTo(p.x, p.y - p.size);
+          ctx.lineTo(p.x + p.size * 0.5, p.y - p.size * 0.2);
+          ctx.lineTo(p.x + p.size, p.y);
+          ctx.lineTo(p.x + p.size * 0.5, p.y + p.size * 0.2);
+          ctx.lineTo(p.x, p.y + p.size);
+          ctx.lineTo(p.x - p.size * 0.5, p.y + p.size * 0.2);
+          ctx.lineTo(p.x - p.size, p.y);
+          ctx.lineTo(p.x - p.size * 0.5, p.y - p.size * 0.2);
+          ctx.closePath();
+          ctx.fill();
+        }
       } else if (p.type === "popup" || p.type === "warning") {
         ctx.globalAlpha = p.alpha;
         const pulse = p.type === "warning" ? 1 + Math.sin(p.pulse) * 0.06 : 1;
@@ -130,6 +178,15 @@ export class ParticleSystem {
         ctx.font = p.type === "warning" ? "bold 20px Georgia" : "bold 18px Georgia";
         ctx.textAlign = "center";
         ctx.fillText(p.text, 0, 0);
+        ctx.restore();
+      } else if (p.type === "upgradeBurst") {
+        ctx.globalAlpha = p.alpha;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotate);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size * 0.5, -p.size * 1.5, p.size, p.size * 3);
+        ctx.fillRect(-p.size * 1.5, -p.size * 0.5, p.size * 3, p.size);
         ctx.restore();
       }
     }

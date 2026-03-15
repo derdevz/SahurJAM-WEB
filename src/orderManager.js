@@ -2,6 +2,7 @@ import { RECIPES } from "./recipes.js";
 import { GAME_CONFIG } from "./config/gameConfig.js";
 
 const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const RECIPE_ENTRIES = Object.entries(RECIPES);
 
 export class OrderManager {
   constructor(onExpire, config = GAME_CONFIG, modifiers = {}) {
@@ -9,6 +10,7 @@ export class OrderManager {
     this.activeOrders = [];
     this.maxOrders = modifiers.maxOrders || config.orders.maxActive;
     this.orderTimeMultiplier = modifiers.orderTimeMultiplier || 1;
+    this.spawnRateMultiplier = modifiers.spawnRateMultiplier || 1;
     this.nextId = 1;
     this.spawnTimer = 0;
     this.spawnCooldown = 0;
@@ -19,6 +21,7 @@ export class OrderManager {
     this.phaseTipMultiplier = 2.0;
     this.currentPhase = config.cycle.initialPhase;
     this.diningTableIds = modifiers.diningTableIds || [];
+    this.level = modifiers.level || 1;
 
     this.setCyclePhase(this.currentPhase);
     this.spawnOrder();
@@ -27,6 +30,18 @@ export class OrderManager {
 
   setDiningTables(tableIds) {
     this.diningTableIds = tableIds;
+  }
+
+  setLevel(level) {
+    this.level = Math.max(1, level || 1);
+  }
+
+  getUnlockedRecipeEntries() {
+    return RECIPE_ENTRIES.filter(([, recipe]) => (recipe.unlockLevel || 1) <= this.level);
+  }
+
+  getUnlockedRecipes() {
+    return this.getUnlockedRecipeEntries().map(([key, recipe]) => ({ key, recipe }));
   }
 
   getAvailableTableId() {
@@ -42,8 +57,8 @@ export class OrderManager {
   setCyclePhase(phase) {
     this.currentPhase = phase;
     const phaseConfig = this.config.cycle.phases[phase] || this.config.cycle.phases[this.config.cycle.initialPhase];
-    this.spawnMin = phaseConfig.orders.spawnMinMs;
-    this.spawnMax = phaseConfig.orders.spawnMaxMs;
+    this.spawnMin = Math.max(1500, Math.round(phaseConfig.orders.spawnMinMs * this.spawnRateMultiplier));
+    this.spawnMax = Math.max(this.spawnMin + 500, Math.round(phaseConfig.orders.spawnMaxMs * this.spawnRateMultiplier));
     this.phaseTipMultiplier = phaseConfig.orders.tipMultiplier;
   }
 
@@ -77,12 +92,13 @@ export class OrderManager {
     const tableId = this.getAvailableTableId();
     if (!tableId) return null;
 
-    const recipeKeys = Object.keys(RECIPES);
-    const key = recipeKeys[Math.floor(Math.random() * recipeKeys.length)];
-    const recipe = RECIPES[key];
+    const unlockedRecipes = this.getUnlockedRecipeEntries();
+    if (unlockedRecipes.length === 0) return null;
+    const [key, recipe] = unlockedRecipes[Math.floor(Math.random() * unlockedRecipes.length)];
     const order = {
       id: this.nextId++,
       recipe,
+      recipeKey: key,
       tableId,
       timeLimit: Math.round(this.config.orders.timeLimitMs * this.orderTimeMultiplier),
       elapsed: 0,
@@ -95,9 +111,8 @@ export class OrderManager {
 
   completeOrder(recipeKey, tableId = null) {
     const idx = this.activeOrders.findIndex((o) => {
-      const foundKey = Object.keys(RECIPES).find((k) => RECIPES[k] === o.recipe);
       if (tableId && o.tableId !== tableId) return false;
-      return foundKey === recipeKey;
+      return o.recipeKey === recipeKey;
     });
 
     if (idx === -1) {

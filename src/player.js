@@ -1,4 +1,4 @@
-import { ITEM_ICONS, RECIPES } from "./recipes.js";
+import { ITEM_ICONS, ITEM_LABELS, RECIPES } from "./recipes.js";
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -116,7 +116,11 @@ export class Player {
       return 0;
     }
 
-    if (station.type === "diningTable" && station.seatedOrder) return 120;
+    if (station.type === "diningTable" && station.seatedOrder) {
+      const nextStep = this.heldItem.recipe?.steps[this.heldItem.stepIndex + 1];
+      if (this.heldItem.state === "heated" || !nextStep) return 120;
+      return 15;
+    }
     if (station.type === "prepTable" && !station.item && this.heldItem.recipeKey) return 100;
     if (station.type === "trash") return 20;
     if (station.item) return 0;
@@ -160,19 +164,30 @@ export class Player {
         const key = urgent || possibleItems[Math.floor(Math.random() * possibleItems.length)];
 
         const matchOrder = orderManager.activeOrders.find((o) => o.recipe.steps[0].item === key);
-        const fallbackRecipe = Object.values(RECIPES).find((r) => r.steps[0].item === key) || null;
+        const fallbackRecipe =
+          orderManager
+            .getUnlockedRecipes()
+            .map((entry) => entry.recipe)
+            .find((recipe) => recipe.steps[0].item === key) ||
+          Object.values(RECIPES).find((r) => r.steps[0].item === key) ||
+          null;
         const recipe = matchOrder?.recipe || fallbackRecipe;
         const recipeKey = recipe ? recipeKeyFromRecipe(recipe) : null;
 
         this.heldItem = {
           key,
           icon: ITEM_ICONS[key] || "🍽",
+          label: ITEM_LABELS[key] || key,
           recipe,
           recipeKey,
           stepIndex: 0,
           state: "raw"
         };
-        return { message: `${this.heldItem.icon} malzeme alindi`, didInteract: true };
+        return {
+          message: `${this.heldItem.icon} ${this.heldItem.label} alindi`,
+          pickedUp: { key: this.heldItem.key, label: this.heldItem.label, icon: this.heldItem.icon },
+          didInteract: true
+        };
       }
 
       if (station.item && ["has_item", "done", "burnt"].includes(station.state)) {
@@ -201,6 +216,9 @@ export class Player {
     if (station.type === "diningTable") {
       if (!station.seatedOrder) return { message: "Bu masada bekleyen kimse yok", didInteract: true };
       if (!this.heldItem.recipeKey) return { message: "Bu siparisle eslesmiyor", didInteract: true, fail: true };
+      if (this.heldItem.state !== "heated") {
+        return { message: "Servisten once firinda isitman gerekiyor", didInteract: true, fail: true };
+      }
 
       const result = orderManager.completeOrder(this.heldItem.recipeKey, station.tableId);
       if (!result.success) return { message: "Yanlis servis", didInteract: true, fail: true };
@@ -237,7 +255,7 @@ export class Player {
       ["stove", "oven", "chopping"].includes(station.type) &&
       nextStep &&
       ((station.type === "stove" && nextStep.action === "cook") ||
-        (station.type === "oven" && nextStep.action === "bake") ||
+        (station.type === "oven" && ["bake", "heat"].includes(nextStep.action)) ||
         (station.type === "chopping" && nextStep.action === "chop"))
     ) {
       station.duration = nextStep.duration;

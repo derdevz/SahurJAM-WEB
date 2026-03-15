@@ -31,6 +31,9 @@ export class Station {
     this.burnAt = options.burnAt || null;
     this.tableId = options.tableId || null;
     this.seatedOrder = null;
+    this.serveFlashTimer = 0;
+    this.serveBadgeText = "";
+    this.satisfactionTimer = 0;
   }
 
   setRect(x, y, w, h) {
@@ -42,6 +45,12 @@ export class Station {
 
   update(delta, holdActive = true, speedMultiplier = 1) {
     if (this.state !== "processing") {
+      if (this.serveFlashTimer > 0) {
+        this.serveFlashTimer = Math.max(0, this.serveFlashTimer - delta);
+      }
+      if (this.satisfactionTimer > 0) {
+        this.satisfactionTimer = Math.max(0, this.satisfactionTimer - delta);
+      }
       return;
     }
 
@@ -83,7 +92,7 @@ export class Station {
     }
     if (
       (this.type === "stove" && step.action !== "cook") ||
-      (this.type === "oven" && step.action !== "bake") ||
+      (this.type === "oven" && !["bake", "heat"].includes(step.action)) ||
       (this.type === "chopping" && step.action !== "chop")
     ) {
       return false;

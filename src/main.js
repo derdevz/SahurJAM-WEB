@@ -78,10 +78,17 @@ const syncUi = () => {
 requestAnimationFrame(syncUi);
 
 const beginGame = () => {
-  if (!startScreen.classList.contains("hidden")) {
-    startScreen.classList.add("hidden");
+  if (startScreen.classList.contains("hidden")) {
+    game.startRun();
+    return;
   }
-  game.startRun();
+
+  startScreen.classList.add("is-starting");
+  window.setTimeout(() => {
+    startScreen.classList.add("hidden");
+    startScreen.classList.remove("is-starting");
+    game.startRun();
+  }, 720);
 };
 
 startButton.addEventListener("click", beginGame);

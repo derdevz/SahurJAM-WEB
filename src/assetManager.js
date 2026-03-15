@@ -18,9 +18,18 @@ export class AssetManager {
       itemLentils: "assets/items/lentils.png",
       itemDough: "assets/items/dough.png",
       itemVegetables: "assets/items/vegetables.png",
+      itemChickpeas: "assets/items/chickpeas.svg",
+      itemPastry: "assets/items/pastry.svg",
+      itemMeat: "assets/items/meat.svg",
+      itemRice: "assets/items/rice.svg",
       itemMercimekCorbasi: "assets/items/mercimekCorbasi.png",
       itemPide: "assets/items/pide.png",
-      itemSalata: "assets/items/salata.png"
+      itemSalata: "assets/items/salata.png",
+      itemNohutYemegi: "assets/items/nohutYemegi.svg",
+      itemBaklava: "assets/items/baklava.svg",
+      itemKebap: "assets/items/kebap.svg",
+      itemPilav: "assets/items/pilav.svg",
+      roomBackground: "assets/room_pixel.jpg"
     };
   }
 

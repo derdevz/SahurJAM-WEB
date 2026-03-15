@@ -11,8 +11,9 @@ export function createDefaultProgress(config) {
   return {
     highScore: 0,
     bestCombo: 0,
-    totalHurma: 0,
-    lifetimeHurma: 0,
+    totalHurma: config.progress?.startingHurma ?? 0,
+    lifetimeHurma: config.progress?.startingHurma ?? 0,
+    starterPackGranted: true,
     settings: {
       soundEnabled: true,
       animationsEnabled: config.settings?.defaultAnimationsEnabled ?? true,
@@ -30,7 +31,7 @@ export function loadProgress(config) {
     const raw = window.localStorage.getItem(config.progress.storageKey);
     if (!raw) return defaults;
     const parsed = JSON.parse(raw);
-    return {
+    const merged = {
       ...defaults,
       ...parsed,
       settings: {
@@ -42,6 +43,10 @@ export function loadProgress(config) {
         ...(parsed.upgrades || {})
       }
     };
+    merged.totalHurma = Math.max(merged.totalHurma, defaults.totalHurma);
+    merged.lifetimeHurma = Math.max(merged.lifetimeHurma, defaults.lifetimeHurma);
+    merged.starterPackGranted = true;
+    return merged;
   } catch {
     return defaults;
   }

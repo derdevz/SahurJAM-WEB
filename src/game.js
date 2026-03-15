@@ -12,13 +12,24 @@ import { calculateUpgradeEffects, createDefaultProgress, loadProgress, saveProgr
 const PROCESS_TO_STATE = {
   cook: "cooked",
   bake: "baked",
-  chop: "chopped"
+  chop: "chopped",
+  heat: "heated"
 };
 
 const RECIPE_KEYS = Object.keys(RECIPES);
 
 function getRecipeKey(recipe) {
   return RECIPE_KEYS.find((k) => RECIPES[k] === recipe) || null;
+}
+
+function describeBonus(bonus = {}) {
+  const parts = [];
+  if (bonus.playerSpeedMultiplier) parts.push(`Hareket +%${Math.round((bonus.playerSpeedMultiplier - 1) * 100)}`);
+  if (bonus.processSpeedMultiplier) parts.push(`Hazirlama +%${Math.round((bonus.processSpeedMultiplier - 1) * 100)}`);
+  if (bonus.orderTimeMultiplier) parts.push(`Siparis suresi +%${Math.round((bonus.orderTimeMultiplier - 1) * 100)}`);
+  if (bonus.scoreMultiplier) parts.push(`Skor +%${Math.round((bonus.scoreMultiplier - 1) * 100)}`);
+  if (bonus.hurmaMultiplier) parts.push(`Hurma +%${Math.round((bonus.hurmaMultiplier - 1) * 100)}`);
+  return parts.join(" • ");
 }
 
 export class Game {
@@ -37,12 +48,14 @@ export class Game {
     this.state = "menu";
     this.score = 0;
     this.completedOrders = 0;
+    this.level = 1;
     this.hurma = this.progress.totalHurma;
     this.mainTimer = config.match.durationMs;
 
     this.dayPhase = config.cycle.initialPhase;
     this.phaseTimer = 0;
     this.phaseDuration = config.cycle.phaseDurationMs;
+    this.levelElapsedMs = 0;
 
     this.comboCount = 0;
     this.comboTimer = 0;
@@ -56,6 +69,7 @@ export class Game {
 
     this.cameraShakeTime = 0;
     this.cameraShakeStrength = 0;
+    this.upgradeFlash = null;
 
     this.keys = {};
     this.worldW = this.canvas.width;
@@ -87,10 +101,15 @@ export class Game {
   }
 
   getOrderModifiers() {
+    const levelIndex = Math.max(0, this.level - 1);
+    const maxOrdersBoost = Math.floor(levelIndex / this.config.levels.maxOrdersStepEvery);
+    const maxOrdersCap = Math.min(this.getDiningTableIds().length || this.config.orders.maxActive, this.config.levels.maxOrdersCap);
     return {
-      maxOrders: this.config.orders.maxActive,
-      orderTimeMultiplier: this.upgradeEffects.orderTimeMultiplier,
-      diningTableIds: this.getDiningTableIds()
+      maxOrders: Math.min(this.config.orders.maxActive + maxOrdersBoost, maxOrdersCap),
+      orderTimeMultiplier: this.upgradeEffects.orderTimeMultiplier * Math.max(0.55, 1 - levelIndex * this.config.levels.orderTimeStep),
+      spawnRateMultiplier: Math.max(0.45, 1 - levelIndex * this.config.levels.spawnRateStep),
+      diningTableIds: this.getDiningTableIds(),
+      level: this.level
     };
   }
 
@@ -122,9 +141,17 @@ export class Game {
       this.player.speed = this.config.player.speed * this.worldScale * this.upgradeEffects.playerSpeedMultiplier;
     }
     if (this.orderManager) {
-      this.orderManager.maxOrders = this.config.orders.maxActive;
-      this.orderManager.orderTimeMultiplier = this.upgradeEffects.orderTimeMultiplier;
-      this.orderManager.setDiningTables(this.getDiningTableIds());
+      const modifiers = this.getOrderModifiers();
+      this.orderManager.maxOrders = modifiers.maxOrders;
+      this.orderManager.orderTimeMultiplier = modifiers.orderTimeMultiplier;
+      this.orderManager.spawnRateMultiplier = modifiers.spawnRateMultiplier;
+      this.orderManager.setDiningTables(modifiers.diningTableIds);
+      this.orderManager.setCyclePhase(this.dayPhase);
+      for (const order of this.orderManager.activeOrders) {
+        const progressRatio = order.timeLimit > 0 ? order.elapsed / order.timeLimit : 0;
+        order.timeLimit = Math.round(this.config.orders.timeLimitMs * modifiers.orderTimeMultiplier);
+        order.elapsed = Math.min(order.timeLimit - 1, Math.max(0, Math.round(order.timeLimit * progressRatio)));
+      }
     }
   }
 
@@ -150,16 +177,17 @@ export class Game {
         level,
         maxLevel: upgrade.levels.length,
         nextCost: next?.cost || null,
+        nextBonusText: next ? describeBonus(next.bonus) : "",
         isMaxed: level >= upgrade.levels.length
       };
     });
   }
 
-  purchaseUpgrade(id) {
-    if (!["menu", "paused", "gameOver", "levelComplete"].includes(this.state)) {
-      return { success: false, message: "Yükseltme yapmak için oyunu duraklat" };
-    }
+  getUnlockedRecipeNames() {
+    return this.orderManager.getUnlockedRecipes().map((entry) => entry.recipe.name);
+  }
 
+  purchaseUpgrade(id) {
     const upgrade = this.config.upgrades.catalog.find((item) => item.id === id);
     if (!upgrade) return { success: false, message: "Yükseltme bulunamadı" };
 
@@ -172,6 +200,25 @@ export class Game {
     this.progress.upgrades[id] = currentLevel + 1;
     this.refreshUpgradeEffects();
     this.persistProgress();
+    this.upgradeFlash = {
+      icon: upgrade.icon || "⬆",
+      label: upgrade.name,
+      detail: describeBonus(nextLevel.bonus),
+      color: id === "blessing" ? "#f5c842" : id === "patientGuests" ? "#9fc7ff" : id === "quickPrep" ? "#ff9f5a" : "#7ee081",
+      timer: 2600,
+      duration: 2600
+    };
+    if (this.player) {
+      this.particles.emit("sparkle", this.player.x, this.player.y - this.player.radius, {
+        count: 18,
+        color: this.upgradeFlash.color
+      });
+      this.particles.emit("upgradeBurst", this.player.x, this.player.y, {
+        count: 12,
+        color: this.upgradeFlash.color
+      });
+    }
+    this.addCameraShake(4, 180);
     this.notify(`${upgrade.name} seviye ${currentLevel + 1} oldu`);
     return { success: true, message: `${upgrade.name} geliştirildi` };
   }
@@ -232,19 +279,32 @@ export class Game {
     return this.config.cycle.phases[phase] || this.config.cycle.phases[this.config.cycle.initialPhase];
   }
 
+  getCurrentLevelTarget() {
+    const targets = this.config.levels.deliveryTargets || [];
+    return targets[Math.min(this.level - 1, targets.length - 1)] || 1;
+  }
+
   getStatusText() {
     if (this.state === "levelComplete") {
       return {
-        title: "SERVIS TAMAMLANDI",
-        subtitle: `Skor ${this.score} • ${this.completedOrders} sipariş teslim edildi • ${this.hurma} hurma`,
-        action: "Yeniden oynamak için Enter veya R"
+        title: `SEVIYE ${this.level} TAMAMLANDI`,
+        subtitle: `Skor ${this.score} • ${this.completedOrders}/${this.getCurrentLevelTarget()} teslimat • ${this.hurma} hurma`,
+        action: "Sonraki seviye için Enter, yeni tur için R"
+      };
+    }
+
+    if (this.state === "levelFailed") {
+      return {
+        title: `SEVIYE ${this.level} BASARISIZ`,
+        subtitle: `Hedef ${this.getCurrentLevelTarget()} teslimatti, sen ${this.completedOrders} teslimat yaptin`,
+        action: "Ayni turu yeniden denemek icin Enter veya R"
       };
     }
 
     if (this.state === "paused") {
       return {
         title: "DURAKLATILDI",
-        subtitle: `Skor ${this.score} • ${this.completedOrders} sipariş • ${this.hurma} hurma`,
+        subtitle: `Skor ${this.score} • ${this.completedOrders}/${this.getCurrentLevelTarget()} teslimat • ${this.hurma} hurma`,
         action: "Devam etmek için Escape veya panel düğmesini kullan"
       };
     }
@@ -354,8 +414,12 @@ export class Game {
       this.keys[e.code] = true;
 
       if (e.code === "Enter") {
-        if (this.state === "menu" || this.state === "levelComplete" || this.state === "gameOver") {
+        if (this.state === "menu" || this.state === "gameOver" || this.state === "levelFailed") {
           this.startRun();
+          this.audio.playMenuStart();
+        }
+        if (this.state === "levelComplete") {
+          this.startNextLevel();
           this.audio.playMenuStart();
         }
       }
@@ -393,10 +457,12 @@ export class Game {
     this.state = "playing";
     this.score = 0;
     this.completedOrders = 0;
+    this.level = 1;
     this.mainTimer = this.config.match.durationMs;
 
     this.dayPhase = this.config.cycle.initialPhase;
     this.phaseTimer = 0;
+    this.levelElapsedMs = 0;
 
     this.comboCount = 0;
     this.comboTimer = 0;
@@ -416,18 +482,47 @@ export class Game {
     this.orderManager.setDiningTables(this.getDiningTableIds());
     this.syncDiningTables();
 
-    this.notify(this.getPhaseConfig().notify);
+    this.notify(`${this.getPhaseConfig().notify} • Hedef ${this.getCurrentLevelTarget()} teslimat`);
+  }
+
+  startNextLevel() {
+    this.state = "playing";
+    this.level += 1;
+    this.mainTimer = this.config.match.durationMs;
+    this.dayPhase = this.config.cycle.initialPhase;
+    this.phaseTimer = 0;
+    this.levelElapsedMs = 0;
+    this.comboCount = 0;
+    this.comboTimer = 0;
+    this.comboMultiplier = 1;
+    this.player = this.createPlayer(this.worldW, this.worldH);
+    this.stations = this.createStations();
+    this.particles = new ParticleSystem();
+    this.orderManager = new OrderManager((penalty, msg) => {
+      this.score += penalty;
+      this.breakCombo();
+      this.audio.playFail();
+      this.notify(msg);
+    }, this.config, this.getOrderModifiers());
+    this.orderManager.setCyclePhase(this.dayPhase);
+    this.orderManager.setDiningTables(this.getDiningTableIds());
+    this.syncDiningTables();
+    this.notify(`Seviye ${this.level} basladi • Hedef ${this.getCurrentLevelTarget()} teslimat`);
   }
 
   updateCycle(delta) {
-    this.phaseTimer += delta;
-    if (this.phaseTimer >= this.phaseDuration) {
-      this.phaseTimer = 0;
-      this.dayPhase = this.dayPhase === "iftar" ? "sahur" : "iftar";
-      this.orderManager.setCyclePhase(this.dayPhase);
-      this.particles.emit(this.dayPhase === "iftar" ? "phaseWarm" : "phaseCool", this.worldW * 0.5, 64, { count: 12 });
-      this.notify(this.getPhaseConfig().notify);
-    }
+    this.levelElapsedMs = Math.min(this.config.match.durationMs, this.levelElapsedMs + delta);
+    const cyclePhases = ["iftar", "sahur"];
+    const phaseIndex = Math.min(cyclePhases.length - 1, Math.floor(this.levelElapsedMs / this.phaseDuration));
+    const nextPhase = cyclePhases[phaseIndex] || this.config.cycle.initialPhase;
+
+    this.phaseTimer = this.levelElapsedMs % this.phaseDuration;
+    if (nextPhase === this.dayPhase) return;
+
+    this.dayPhase = nextPhase;
+    this.orderManager.setCyclePhase(this.dayPhase);
+    this.particles.emit(this.dayPhase === "iftar" ? "phaseWarm" : "phaseCool", this.worldW * 0.5, 64, { count: 12 });
+    this.notify(this.getPhaseConfig().notify);
   }
 
   addCameraShake(strength = 5, durationMs = 120) {
@@ -465,6 +560,18 @@ export class Game {
     if (result?.message) this.notify(result.message);
     this.audio.playInteract();
 
+    if (result?.pickedUp && this.player?.heldItem) {
+      const pickupColor = ["vegetables", "rice"].includes(this.player.heldItem.key) ? "#9fe082" : ["dough", "pastry"].includes(this.player.heldItem.key) ? "#f0d594" : "#f5c27a";
+      this.particles.emit("pickupBurst", this.player.x, this.player.y - this.player.radius - 12, {
+        count: 10,
+        color: pickupColor
+      });
+      this.particles.emit("popup", this.player.x, this.player.y - this.player.radius - 26, {
+        text: `${result.pickedUp.icon} ${result.pickedUp.label}`,
+        color: "#fff1c9"
+      });
+    }
+
     if (result?.fail) {
       this.breakCombo();
       this.audio.playFail();
@@ -491,9 +598,13 @@ export class Game {
 
       const service = this.stations.find((s) => s.tableId === result.served.order.tableId) || this.stations.find((s) => s.type === "prepTable");
       if (service) {
+        service.serveFlashTimer = 850;
+        service.serveBadgeText = `+${totalAward}`;
+        service.satisfactionTimer = 1400;
         const sx = service.x + service.w / 2;
         const sy = service.y + service.h / 2;
         this.particles.emit("sparkle", sx, sy, { count: 10 });
+        this.particles.emit("upgradeBurst", sx, sy, { count: 8, color: "#f5d779" });
         this.particles.emit("popup", sx, sy - 20, {
           text: `+${totalAward} puan`,
           color: "#f6de92"
@@ -506,12 +617,6 @@ export class Game {
 
       this.audio.playServe(this.comboMultiplier);
       this.addCameraShake(6, 140);
-
-      if (this.completedOrders >= this.config.match.levelCompleteOrders) {
-        this.state = "levelComplete";
-        this.finalizeRunProgress();
-        this.notify("Seviye tamamlandi!");
-      }
 
       this.syncDiningTables();
     }
@@ -549,7 +654,7 @@ export class Game {
 
       if (wasState === "processing" && station.state === "done" && station.item) {
         const nextStep = station.item.recipe.steps[station.item.stepIndex + 1];
-        if (nextStep && ["cook", "bake", "chop"].includes(nextStep.action)) {
+        if (nextStep && ["cook", "bake", "chop", "heat"].includes(nextStep.action)) {
           station.item.stepIndex += 1;
           station.item.state = PROCESS_TO_STATE[nextStep.action];
           const finalKey = getRecipeKey(station.item.recipe);
@@ -607,6 +712,13 @@ export class Game {
       }
     }
 
+    if (this.upgradeFlash) {
+      this.upgradeFlash.timer -= delta;
+      if (this.upgradeFlash.timer <= 0) {
+        this.upgradeFlash = null;
+      }
+    }
+
     if (this.comboTimer > 0) {
       this.comboTimer -= delta;
       if (this.comboTimer <= 0) this.breakCombo();
@@ -639,10 +751,16 @@ export class Game {
     this.mainTimer -= delta;
     if (this.mainTimer <= 0) {
       this.mainTimer = 0;
-      this.state = "gameOver";
-      this.audio.playFail();
-      this.notify("Vakit doldu!");
+      const targetMet = this.completedOrders >= this.getCurrentLevelTarget();
+      this.state = targetMet ? "levelComplete" : "levelFailed";
       this.finalizeRunProgress();
+      if (targetMet) {
+        this.audio.playServe(1);
+        this.notify(`Seviye ${this.level} tamamlandi`);
+      } else {
+        this.audio.playFail();
+        this.notify(`Hedef tutmadi: ${this.completedOrders}/${this.getCurrentLevelTarget()} teslimat`);
+      }
     }
   }
 

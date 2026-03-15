@@ -3,12 +3,10 @@ import { GAME_CONFIG } from "./config/gameConfig.js";
 
 const STATION_ASSET = {
   ingredient: "stationIngredient",
-  fridge: "stationIngredient",
   stove: "stationStove",
   oven: "stationOven",
   chopping: "stationChopping",
   plating: "stationPlating",
-  prepTable: "stationPlating",
   service: "stationService",
   trash: "stationTrash"
 };
@@ -17,9 +15,28 @@ const ITEM_ASSET = {
   lentils: "itemLentils",
   dough: "itemDough",
   vegetables: "itemVegetables",
+  chickpeas: "itemChickpeas",
+  pastry: "itemPastry",
+  meat: "itemMeat",
+  rice: "itemRice",
   mercimekCorbasi: "itemMercimekCorbasi",
   pide: "itemPide",
-  salata: "itemSalata"
+  salata: "itemSalata",
+  nohutYemegi: "itemNohutYemegi",
+  baklava: "itemBaklava",
+  kebap: "itemKebap",
+  pilav: "itemPilav"
+};
+
+const HOT_RECIPES = new Set(["mercimekCorbasi", "pide", "nohutYemegi", "baklava", "kebap", "pilav"]);
+const RECIPE_PRESENTATION = {
+  mercimekCorbasi: { plate: "#d7d7c8", accent: "#d68435", steamColor: "rgba(255, 241, 218, 0.6)", steamCount: 3 },
+  pide: { plate: "#ddd5c7", accent: "#d09b52", steamColor: "rgba(255, 236, 208, 0.54)", steamCount: 2 },
+  salata: { plate: "#d9e6d3", accent: "#7db16a", steamColor: "rgba(215, 238, 220, 0.2)", steamCount: 0 },
+  nohutYemegi: { plate: "#ddd3c5", accent: "#c98f47", steamColor: "rgba(255, 236, 212, 0.58)", steamCount: 3 },
+  baklava: { plate: "#efe0b5", accent: "#e2b84e", steamColor: "rgba(255, 244, 214, 0.42)", steamCount: 2 },
+  kebap: { plate: "#2d2d30", accent: "#c84f39", steamColor: "rgba(255, 225, 205, 0.62)", steamCount: 3 },
+  pilav: { plate: "#ece2cc", accent: "#d4b56d", steamColor: "rgba(255, 248, 232, 0.58)", steamCount: 3 }
 };
 
 export class Renderer {
@@ -29,6 +46,7 @@ export class Renderer {
     this.hud = hudRefs;
     this.config = config;
     this.assets = assets;
+    this.upgradeMarkup = "";
   }
 
   getAsset(key) {
@@ -41,106 +59,145 @@ export class Renderer {
     return true;
   }
 
+  drawCustomStation(ctx, station) {
+    if (station.type === "fridge") {
+      ctx.fillStyle = "#5f7f98";
+      ctx.fillRect(station.x, station.y, station.w, station.h);
+      ctx.fillStyle = "#7899b3";
+      ctx.fillRect(station.x + 4, station.y + 4, station.w - 8, station.h - 8);
+      ctx.fillStyle = "#dfeefa";
+      ctx.fillRect(station.x + 8, station.y + 10, station.w - 16, station.h - 20);
+      ctx.strokeStyle = "rgba(23, 43, 62, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(station.x, station.y, station.w, station.h);
+
+      ctx.fillStyle = "#496276";
+      ctx.fillRect(station.x + station.w - 14, station.y + 22, 4, 28);
+      ctx.fillRect(station.x + station.w - 14, station.y + 98, 4, 28);
+      ctx.fillRect(station.x + 8, station.y + station.h - 6, 10, 6);
+      ctx.fillRect(station.x + station.w - 18, station.y + station.h - 6, 10, 6);
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(station.x + 8, station.y + 10, station.w - 16, station.h - 20);
+      ctx.fillStyle = "rgba(80, 121, 152, 0.35)";
+      ctx.fillRect(station.x + 10, station.y + 36, station.w - 20, 3);
+      ctx.fillRect(station.x + 10, station.y + 68, station.w - 20, 3);
+      ctx.fillRect(station.x + 10, station.y + 100, station.w - 20, 3);
+      ctx.fillRect(station.x + 10, station.y + 132, station.w - 20, 3);
+
+      const items = station.ingredientItems || [];
+      items.slice(0, 8).forEach((itemKey, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const icon = ITEM_ICONS[itemKey] || "🍽";
+        const x = station.x + 26 + col * 32;
+        const y = station.y + 30 + row * 31;
+        ctx.font = "20px serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#355066";
+        ctx.fillText(icon, x, y);
+      });
+      return true;
+    }
+
+    if (station.type === "prepTable") {
+      // Marble/Wood prep table with glass top
+      ctx.fillStyle = "rgba(140, 98, 57, 0.4)";
+      ctx.fillRect(station.x, station.y + 12, station.w, station.h - 12);
+      ctx.fillStyle = "rgba(176, 133, 89, 0.6)";
+      ctx.fillRect(station.x, station.y, station.w, 12);
+      ctx.strokeStyle = "rgba(246, 222, 146, 0.3)";
+      ctx.strokeRect(station.x, station.y, station.w, station.h);
+      return true;
+    }
+
+    if (station.type === "diningTable") {
+      const cx = station.x + station.w / 2;
+      const cy = station.y + station.h / 2;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, station.w / 2, station.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(240, 211, 146, 0.2)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, station.w / 2 - 4, station.h / 2 - 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(232, 216, 187, 0.32)";
+      ctx.beginPath();
+      ctx.arc(cx, cy - 4, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(244, 219, 168, 0.38)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 4, 20, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.font = "18px serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255, 241, 214, 0.88)";
+      ctx.fillText("🍽", cx, cy + 2);
+      return true;
+    }
+
+    return false;
+  }
+
   drawBackground(ctx, phase = "iftar") {
     ctx.imageSmoothingEnabled = false;
-    const tile = 36;
     const { width, height } = this.canvas;
 
-    const wallTopH = Math.floor(height * 0.34);
-    const wallMidH = Math.floor(height * 0.18);
-    const floorY = wallTopH + wallMidH;
+    const bg = this.getAsset("roomBackground");
+    if (bg) {
+      ctx.drawImage(bg, 0, 0, width, height);
+    } else {
+      ctx.fillStyle = "#2a1a12";
+      ctx.fillRect(0, 0, width, height);
+    }
 
     const warmPhase = phase === "iftar";
-    const wallGrad = ctx.createLinearGradient(0, 0, 0, wallTopH);
-    wallGrad.addColorStop(0, warmPhase ? "#5a3722" : "#243049");
-    wallGrad.addColorStop(1, warmPhase ? "#2b1f17" : "#1b2538");
-    ctx.fillStyle = wallGrad;
-    ctx.fillRect(0, 0, width, wallTopH);
+    const mainGlow = ctx.createLinearGradient(0, 0, 0, height);
+    if (warmPhase) {
+      mainGlow.addColorStop(0, "rgba(255, 177, 73, 0.28)");
+      mainGlow.addColorStop(0.45, "rgba(184, 82, 36, 0.14)");
+      mainGlow.addColorStop(1, "rgba(42, 18, 8, 0.08)");
+      ctx.fillStyle = mainGlow;
+      ctx.fillRect(0, 0, width, height);
 
-    ctx.fillStyle = warmPhase ? "#5a3c2a" : "#394866";
-    ctx.fillRect(0, wallTopH, width, wallMidH);
+      const sunGlow = ctx.createRadialGradient(width * 0.78, height * 0.18, 0, width * 0.78, height * 0.18, 240);
+      sunGlow.addColorStop(0, "rgba(255, 214, 118, 0.34)");
+      sunGlow.addColorStop(0.45, "rgba(255, 148, 66, 0.16)");
+      sunGlow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sunGlow;
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      mainGlow.addColorStop(0, "rgba(84, 122, 194, 0.2)");
+      mainGlow.addColorStop(0.45, "rgba(40, 63, 110, 0.14)");
+      mainGlow.addColorStop(1, "rgba(10, 18, 34, 0.14)");
+      ctx.fillStyle = mainGlow;
+      ctx.fillRect(0, 0, width, height);
 
-    ctx.fillStyle = "#7b5539";
-    ctx.fillRect(0, wallTopH + wallMidH - 8, width, 8);
-
-    ctx.fillStyle = "#2a1a12";
-    ctx.fillRect(0, floorY, width, height - floorY);
-
-    const floorTile = this.getAsset("floorTile");
-    for (let y = floorY; y < height; y += tile) {
-      for (let x = 0; x < width; x += tile) {
-        if (!this.drawImageSafe(ctx, floorTile, x, y, tile, tile)) {
-          ctx.fillStyle = (Math.floor(x / tile) + Math.floor(y / tile)) % 2 === 0 ? "#2f2016" : "#26180f";
-          ctx.fillRect(x, y, tile, tile);
-          ctx.strokeStyle = "#1f130d";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x, y, tile, tile);
-        }
-      }
+      const moonGlow = ctx.createRadialGradient(width * 0.78, height * 0.16, 0, width * 0.78, height * 0.16, 220);
+      moonGlow.addColorStop(0, "rgba(214, 232, 255, 0.26)");
+      moonGlow.addColorStop(0.5, "rgba(112, 152, 225, 0.12)");
+      moonGlow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = moonGlow;
+      ctx.fillRect(0, 0, width, height);
     }
-
-    const windowY = 34;
-    const windowW = 110;
-    const windowH = 68;
-    const windowGap = (width - windowW * 3) / 4;
-    for (let i = 0; i < 3; i += 1) {
-      const x = windowGap + i * (windowW + windowGap);
-      ctx.fillStyle = "#2a1a12";
-      ctx.fillRect(x - 4, windowY - 4, windowW + 8, windowH + 8);
-      ctx.fillStyle = "#15202a";
-      ctx.fillRect(x, windowY, windowW, windowH);
-      ctx.strokeStyle = "#8d6545";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(x, windowY, windowW, windowH);
-      ctx.strokeStyle = "#6f4d34";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x + windowW / 2, windowY);
-      ctx.lineTo(x + windowW / 2, windowY + windowH);
-      ctx.moveTo(x, windowY + windowH / 2);
-      ctx.lineTo(x + windowW, windowY + windowH / 2);
-      ctx.stroke();
-    }
-
-    const lampY = wallTopH + 8;
-    const lampXs = [width * 0.2, width * 0.5, width * 0.8];
-    for (const lx of lampXs) {
-      ctx.strokeStyle = "#a9835f";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(lx, 0);
-      ctx.lineTo(lx, lampY);
-      ctx.stroke();
-
-      ctx.fillStyle = "#d6b889";
-      ctx.beginPath();
-      ctx.moveTo(lx - 18, lampY);
-      ctx.lineTo(lx + 18, lampY);
-      ctx.lineTo(lx + 12, lampY + 14);
-      ctx.lineTo(lx - 12, lampY + 14);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = warmPhase ? "rgba(255, 223, 154, 0.2)" : "rgba(170, 214, 255, 0.18)";
-      ctx.beginPath();
-      ctx.arc(lx, lampY + 28, 34, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = "#4a3223";
-    ctx.fillRect(0, floorY - 6, width, 6);
-
-    ctx.fillStyle = warmPhase ? "rgba(245, 185, 83, 0.08)" : "rgba(132, 184, 255, 0.08)";
-    ctx.fillRect(0, 0, width, height);
   }
 
   drawStation(ctx, station) {
     ctx.save();
+    const pulseTime = performance.now() * 0.004;
 
     const stationAssetKey = STATION_ASSET[station.type];
     const stationAsset = stationAssetKey ? this.getAsset(stationAssetKey) : null;
 
-    if (!this.drawImageSafe(ctx, stationAsset, station.x, station.y, station.w, station.h)) {
+    if (!this.drawCustomStation(ctx, station) && !this.drawImageSafe(ctx, stationAsset, station.x, station.y, station.w, station.h)) {
       ctx.fillStyle = station.color.top;
       ctx.fillRect(station.x, station.y, station.w, station.h);
       ctx.fillStyle = station.color.side;
@@ -180,12 +237,48 @@ export class Renderer {
       ctx.shadowBlur = 0;
     }
 
+    if (station.type === "diningTable" && station.seatedOrder) {
+      const isPremium = (station.seatedOrder.recipe.unlockLevel || 1) >= 3 || station.seatedOrder.recipe.points >= 200;
+      const recipeKey = station.seatedOrder.recipeKey;
+      const presentation = RECIPE_PRESENTATION[recipeKey] || {};
+      const glowAlpha = 0.08 + (Math.sin(pulseTime + station.x * 0.01) + 1) * 0.05;
+      ctx.fillStyle = isPremium ? "rgba(84, 57, 26, 0.9)" : "rgba(68, 48, 30, 0.82)";
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2 + 6, station.w * 0.26, station.h * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = presentation.plate || (isPremium ? "rgba(247, 232, 186, 0.96)" : "rgba(238, 229, 212, 0.92)");
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2 + 1, station.w * 0.22, station.h * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = presentation.accent
+        ? `${presentation.accent}${""}`
+        : isPremium
+          ? `rgba(245, 200, 66, ${0.12 + glowAlpha})`
+          : `rgba(255, 244, 220, ${0.07 + glowAlpha * 0.6})`;
+      if (presentation.accent) {
+        ctx.globalAlpha = 0.16 + glowAlpha;
+      }
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * 0.38, station.h * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      if (isPremium) {
+        ctx.strokeStyle = presentation.accent || "rgba(245, 200, 66, 0.55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * 0.32, station.h * 0.24, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     if (station.item) {
       const itemAsset = this.getAsset(ITEM_ASSET[station.item.key]);
-      const size = Math.min(station.w, station.h) * 0.48;
+      const isRaw = station.item.state === "raw";
+      const size = Math.min(station.w, station.h) * (station.type === "diningTable" ? 0.72 : isRaw ? 0.72 : 0.66);
       if (!this.drawImageSafe(ctx, itemAsset, station.x + station.w / 2 - size / 2, station.y + station.h / 2 - size / 2, size, size)) {
         const icon = station.item.icon || ITEM_ICONS[station.item.key] || "🍽";
-        ctx.font = `${Math.max(17, station.h * 0.32)}px serif`;
+        ctx.font = `${Math.max(isRaw ? 30 : 22, station.h * (station.type === "diningTable" ? 0.48 : isRaw ? 0.48 : 0.4))}px serif`;
         ctx.textAlign = "center";
         ctx.fillStyle = "#f5f0de";
         ctx.fillText(icon, station.x + station.w / 2, station.y + station.h / 2 + 8);
@@ -193,24 +286,99 @@ export class Renderer {
     }
 
     if (station.type === "diningTable" && station.seatedOrder) {
+      const isPremium = (station.seatedOrder.recipe.unlockLevel || 1) >= 3 || station.seatedOrder.recipe.points >= 200;
+      const recipeKey = station.seatedOrder.recipeKey;
+      const presentation = RECIPE_PRESENTATION[recipeKey] || {};
       ctx.fillStyle = "#f5ede0";
-      ctx.font = "18px serif";
+      ctx.font = `${Math.max(isPremium ? 34 : 28, station.h * (isPremium ? 0.54 : 0.46))}px serif`;
       ctx.textAlign = "center";
-      ctx.fillText("🧍", station.x + station.w / 2 - 18, station.y + station.h / 2 + 8);
-      ctx.fillText(station.seatedOrder.recipe.icon, station.x + station.w / 2 + 18, station.y + station.h / 2 + 8);
+      ctx.shadowBlur = isPremium ? 20 : 10;
+      ctx.shadowColor = presentation.accent || (isPremium ? "#f5c842" : "rgba(255, 245, 225, 0.55)");
+      ctx.fillText(station.seatedOrder.recipe.icon, station.x + station.w / 2, station.y + station.h / 2 + 10);
+      ctx.shadowBlur = 0;
+
+      if (HOT_RECIPES.has(recipeKey) && (presentation.steamCount || 0) > 0) {
+        ctx.strokeStyle = presentation.steamColor || "rgba(255, 245, 225, 0.55)";
+        ctx.lineWidth = 2;
+        const halfCount = Math.floor(presentation.steamCount / 2);
+        for (let i = -halfCount; i <= halfCount; i += 1) {
+          const baseX = station.x + station.w / 2 + i * 12;
+          const steamTop = station.y + station.h / 2 - 28 + Math.sin(pulseTime * 1.6 + i) * 4;
+          ctx.beginPath();
+          ctx.moveTo(baseX, station.y + station.h / 2 - 4);
+          ctx.bezierCurveTo(baseX - 6, station.y + station.h / 2 - 16, baseX + 8, steamTop + 8, baseX, steamTop);
+          ctx.stroke();
+        }
+      }
+    }
+
+    if (station.serveFlashTimer > 0) {
+      const ratio = station.serveFlashTimer / 850;
+      ctx.fillStyle = `rgba(255, 244, 196, ${ratio * 0.26})`;
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * (0.36 + (1 - ratio) * 0.18), station.h * (0.3 + (1 - ratio) * 0.12), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(245, 200, 66, ${ratio * 0.75})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * (0.25 + (1 - ratio) * 0.26), station.h * (0.18 + (1 - ratio) * 0.18), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(33, 22, 12, ${ratio * 0.92})`;
+      ctx.beginPath();
+      ctx.roundRect(station.x + station.w / 2 - 28, station.y + 8, 56, 24, 10);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(245, 200, 66, ${ratio * 0.9})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255, 239, 196, ${ratio})`;
+      ctx.font = "bold 14px Georgia";
+      ctx.textAlign = "center";
+      ctx.fillText(station.serveBadgeText || "SERVIS", station.x + station.w / 2, station.y + 24);
+    }
+
+    if (station.satisfactionTimer > 0) {
+      const ratio = station.satisfactionTimer / 1400;
+      ctx.fillStyle = `rgba(112, 224, 146, ${ratio * 0.18})`;
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * (0.42 + (1 - ratio) * 0.12), station.h * (0.34 + (1 - ratio) * 0.08), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(170, 250, 192, ${ratio * 0.55})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(station.x + station.w / 2, station.y + station.h / 2, station.w * 0.3, station.h * 0.22, 0, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     if (["prepTable", "diningTable", "fridge"].includes(station.type)) {
       ctx.fillStyle = "#eadcc0";
       ctx.font = "11px Georgia";
       ctx.textAlign = "center";
-      ctx.fillText(station.label, station.x + station.w / 2, station.y + station.h - 8);
+      const label = station.type === "diningTable" ? `🪑 ${station.label}` : station.label;
+      ctx.fillText(label, station.x + station.w / 2, station.y + station.h - 8);
     }
 
     ctx.restore();
   }
 
   drawPlayer(ctx, player) {
+    if (player.upgradeFlash) {
+      const progress = Math.max(0, player.upgradeFlash.timer / player.upgradeFlash.duration);
+      const pulse = 1 + (1 - progress) * 0.25;
+      ctx.save();
+      ctx.globalAlpha = 0.24 + progress * 0.18;
+      ctx.fillStyle = player.upgradeFlash.color;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius * 2.2 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = player.upgradeFlash.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius * 1.55 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const chef = this.getAsset(Math.cos(player.facing) >= 0 ? "chefRight" : "chefLeft");
     const size = player.radius * 2.4;
 
@@ -223,34 +391,52 @@ export class Renderer {
 
     if (player.heldItem) {
       const heldAsset = this.getAsset(ITEM_ASSET[player.heldItem.key]);
-      const heldSize = player.radius * 1.2;
+      const heldSize = player.radius * (player.heldItem.state === "raw" ? 2.25 : 1.85);
       if (!this.drawImageSafe(ctx, heldAsset, player.x - heldSize / 2, player.y - player.radius - heldSize - 2, heldSize, heldSize)) {
-        ctx.font = "20px serif";
+        ctx.font = player.heldItem.state === "raw" ? "34px serif" : "28px serif";
         ctx.textAlign = "center";
-        ctx.fillText(player.heldItem.icon || "🍽", player.x, player.y - 26);
+        ctx.fillText(player.heldItem.icon || "🍽", player.x, player.y - (player.heldItem.state === "raw" ? 36 : 30));
       }
     }
 
     ctx.restore();
+
+    if (player.upgradeFlash) {
+      const progress = Math.max(0, player.upgradeFlash.timer / player.upgradeFlash.duration);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, progress + 0.15);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#fff0c1";
+      ctx.font = "bold 18px Georgia";
+      ctx.fillText(`${player.upgradeFlash.icon} ${player.upgradeFlash.label}`, player.x, player.y - player.radius - 34 - (1 - progress) * 18);
+      ctx.fillStyle = player.upgradeFlash.color;
+      ctx.font = "14px Georgia";
+      ctx.fillText(player.upgradeFlash.detail, player.x, player.y - player.radius - 14 - (1 - progress) * 16);
+      ctx.restore();
+    }
   }
 
   drawHUD(game) {
-    this.hud.score.innerHTML = `<span class="hud-icon">🏆</span><span class="hud-label">Skor</span><strong>${game.score}</strong>`;
+    this.hud.score.innerHTML = `<span class="hud-icon">🏆</span><strong>${game.score}</strong>`;
     this.hud.combo.textContent =
       game.comboCount > 1 ? `KOMBO x${game.comboMultiplier.toFixed(2)} (${game.comboCount})` : "";
 
     const sec = Math.max(0, Math.ceil(game.mainTimer / 1000));
     const mm = String(Math.floor(sec / 60)).padStart(2, "0");
     const ss = String(sec % 60).padStart(2, "0");
-    this.hud.timer.innerHTML = `<span class="timer-label">Kalan Süre</span><strong>${mm}:${ss}</strong>`;
+    this.hud.timer.innerHTML = `<strong>${mm}:${ss}</strong>`;
     this.hud.timer.style.color = sec < 30 ? "#ff5a3f" : "#e8c030";
 
     const phaseLeft = Math.max(0, Math.ceil((game.phaseDuration - game.phaseTimer) / 1000));
     const phaseCfg = this.config.cycle.phases[game.dayPhase] || this.config.cycle.phases.iftar;
-    this.hud.cycle.textContent = `DÖNGÜ: ${phaseCfg.label} (${phaseLeft}s)`;
+    this.hud.cycle.textContent = `${phaseCfg.label} • ${phaseLeft}s`;
     this.hud.cycle.style.color = phaseCfg.hudColor;
     if (this.hud.runStats) {
-      this.hud.runStats.textContent = `Teslimat ${game.completedOrders}/${this.config.match.levelCompleteOrders} • Hurma ${game.hurma}`;
+      this.hud.runStats.innerHTML = `
+        <div class="stat-row"><span>Seviye</span><strong>${game.level}</strong></div>
+        <div class="stat-row"><span>Teslimat</span><strong>${game.completedOrders}/${game.getCurrentLevelTarget()}</strong></div>
+        <div class="stat-row"><span>Hurma</span><strong>${game.hurma}</strong></div>
+      `;
     }
 
     const ordersHtml = game.orderManager.activeOrders
@@ -299,18 +485,21 @@ export class Renderer {
       this.hud.pauseButton.textContent = canPause ? (game.state === "paused" ? "DEVAM ET" : "DURAKLAT") : "OYUNU BAŞLAT";
     }
     if (this.hud.upgrades) {
-      this.hud.upgrades.innerHTML = game
+      const markup = game
         .getUpgradeCatalog()
         .map((upgrade) => {
           const current = upgrade.level;
-          const disabled = upgrade.isMaxed || !["menu", "paused", "gameOver", "levelComplete"].includes(game.state);
+          const canAfford = upgrade.nextCost !== null && game.progress.totalHurma >= upgrade.nextCost;
+          const disabled = upgrade.isMaxed;
           return `
             <article class="upgrade-card ${upgrade.isMaxed ? "maxed" : ""}">
               <div class="upgrade-head">
-                <h3>${upgrade.name}</h3>
+                <h3><span class="upgrade-icon">${upgrade.icon || "⬆"}</span>${upgrade.name}</h3>
                 <span>Sv.${current}/${upgrade.maxLevel}</span>
               </div>
               <p>${upgrade.description}</p>
+              <p class="upgrade-effect">${upgrade.isMaxed ? "Tum etkiler acik" : upgrade.nextBonusText}</p>
+              <p>${upgrade.isMaxed ? "Maksimum seviyeye ulaştı" : canAfford ? "Hazır: hemen uygulanır" : `${upgrade.nextCost - game.progress.totalHurma} hurma daha gerekli`}</p>
               <button type="button" data-upgrade-id="${upgrade.id}" ${disabled ? "disabled" : ""}>
                 ${upgrade.isMaxed ? "Tamamlandı" : `${upgrade.nextCost} hurma ile geliştir`}
               </button>
@@ -318,6 +507,10 @@ export class Renderer {
           `;
         })
         .join("");
+      if (markup !== this.upgradeMarkup) {
+        this.hud.upgrades.innerHTML = markup;
+        this.upgradeMarkup = markup;
+      }
     }
 
     if (this.hud.status) {
@@ -362,11 +555,16 @@ export class Renderer {
       this.drawStation(ctx, station);
     }
 
+    game.player.upgradeFlash = game.upgradeFlash;
     this.drawPlayer(ctx, game.player);
     game.particles.draw(ctx);
 
     if (game.state === "levelComplete") {
-      this.drawOverlay(ctx, "Seviye Tamamlandı", "Yeni tur için Enter'a bas");
+      this.drawOverlay(ctx, `Seviye ${game.level} Tamamlandı`, "Sonraki seviye için Enter'a bas");
+    }
+
+    if (game.state === "levelFailed") {
+      this.drawOverlay(ctx, `Seviye ${game.level} Basarisiz`, `Hedef: ${game.getCurrentLevelTarget()} | Teslimat: ${game.completedOrders}`);
     }
 
     if (game.state === "gameOver") {
@@ -383,7 +581,10 @@ export class Renderer {
 
   drawOverlay(ctx, title, subtitle) {
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.58)";
+    const grad = ctx.createRadialGradient(this.canvas.width / 2, this.canvas.height / 2, 0, this.canvas.width / 2, this.canvas.height / 2, this.canvas.width / 2);
+    grad.addColorStop(0, "rgba(0,0,0,0.15)");
+    grad.addColorStop(1, "rgba(0,0,0,0.72)");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.fillStyle = "#f0d392";
     ctx.textAlign = "center";
