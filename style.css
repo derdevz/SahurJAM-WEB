@@ -30,11 +30,11 @@ body {
 
 .meta-panel {
   position: absolute;
-  top: 16px;
+  top: 72px;
   right: 16px;
   z-index: 45;
   width: min(340px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 88px);
   overflow: auto;
   padding: 18px;
   background:
@@ -1142,6 +1142,7 @@ canvas {
   align-items: center;
   justify-content: center;
   background: rgba(9, 5, 2, 0.45);
+  pointer-events: auto;
 }
 
 #statusOverlay.visible {
@@ -1183,6 +1184,83 @@ canvas {
   font-size: 14px;
 }
 
+.tutorial-card {
+  min-width: min(92vw, 620px);
+  padding: 28px 28px 24px;
+  background:
+    linear-gradient(180deg, rgba(18, 28, 40, 0.96), rgba(9, 14, 22, 0.96)),
+    radial-gradient(circle at top, rgba(74, 213, 255, 0.08), transparent 52%);
+  border-color: rgba(102, 225, 255, 0.38);
+}
+
+.tutorial-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.tutorial-countdown {
+  margin-top: 4px;
+  color: #8fd7ea;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.tutorial-step {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(95, 214, 255, 0.05);
+  border: 1px solid rgba(95, 214, 255, 0.12);
+  text-align: left;
+}
+
+.tutorial-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(95, 214, 255, 0.08);
+  font-size: 20px;
+}
+
+.tutorial-step strong {
+  color: #eefcff;
+  font-size: 14px;
+}
+
+.tutorial-step span {
+  color: #9fcde0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 6px 0 14px;
+  flex-wrap: wrap;
+}
+
+.tutorial-button {
+  border: 1px solid rgba(95, 214, 255, 0.16);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: rgba(95, 214, 255, 0.05);
+  color: #dffaff;
+  font-family: Georgia, "Times New Roman", serif;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.tutorial-button.primary {
+  background: linear-gradient(135deg, rgba(57, 156, 210, 0.88), rgba(26, 98, 154, 0.72));
+}
+
 @keyframes riseFade {
   from {
     opacity: 0;
@@ -1205,7 +1283,7 @@ canvas {
   .meta-panel {
     left: 12px;
     right: 12px;
-    top: 64px;
+    top: 68px;
     bottom: auto;
     width: auto;
     max-height: min(70vh, 560px);
@@ -1223,6 +1301,10 @@ canvas {
   .start-content {
     width: calc(100vw - 32px);
     padding: 20px 18px 24px;
+  }
+
+  .tutorial-steps {
+    grid-template-columns: 1fr;
   }
 
   #score,

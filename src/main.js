@@ -78,6 +78,7 @@ const syncUi = () => {
 requestAnimationFrame(syncUi);
 
 const beginGame = () => {
+  game.audio.unlock();
   if (startScreen.classList.contains("hidden")) {
     game.startRun();
     return;
@@ -153,6 +154,19 @@ hudRefs.orders.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-orders-toggle]");
   if (!toggle) return;
   game.toggleOrdersCollapsed();
+});
+
+hudRefs.status.addEventListener("click", (event) => {
+  game.audio.unlock();
+  const dismiss = event.target.closest("[data-tutorial-dismiss]");
+  if (dismiss) {
+    game.dismissTutorial();
+    return;
+  }
+  const skip = event.target.closest("[data-tutorial-skip]");
+  if (skip) {
+    game.skipTutorialForever();
+  }
 });
 
 window.addEventListener("keydown", (event) => {

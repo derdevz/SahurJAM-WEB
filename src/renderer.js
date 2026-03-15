@@ -59,6 +59,19 @@ export class Renderer {
     return true;
   }
 
+  drawItemVisual(ctx, itemKey, centerX, centerY, size, fallbackIcon = "🍽", fallbackFontSize = null) {
+    const itemAsset = this.getAsset(ITEM_ASSET[itemKey]);
+    if (this.drawImageSafe(ctx, itemAsset, centerX - size / 2, centerY - size / 2, size, size)) {
+      return true;
+    }
+
+    ctx.font = `${fallbackFontSize || Math.round(size * 0.9)}px serif`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#f5f0de";
+    ctx.fillText(fallbackIcon, centerX, centerY + size * 0.18);
+    return false;
+  }
+
   drawCustomStation(ctx, station) {
     if (station.type === "fridge") {
       ctx.fillStyle = "#5f7f98";
@@ -90,13 +103,9 @@ export class Renderer {
       items.slice(0, 8).forEach((itemKey, index) => {
         const col = index % 2;
         const row = Math.floor(index / 2);
-        const icon = ITEM_ICONS[itemKey] || "🍽";
         const x = station.x + 26 + col * 32;
-        const y = station.y + 30 + row * 31;
-        ctx.font = "20px serif";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#355066";
-        ctx.fillText(icon, x, y);
+        const y = station.y + 24 + row * 31;
+        this.drawItemVisual(ctx, itemKey, x, y, 22, ITEM_ICONS[itemKey] || "🍽", 18);
       });
       return true;
     }
@@ -304,34 +313,37 @@ export class Renderer {
     }
 
     if (station.item) {
-      const itemAsset = this.getAsset(ITEM_ASSET[station.item.key]);
       const isRaw = station.item.state === "raw";
       const isDiningTable = station.type === "diningTable";
       const size = Math.min(station.w, station.h) * (isDiningTable ? 0.68 : isRaw ? 0.72 : 0.66);
-      if (!isDiningTable && this.drawImageSafe(ctx, itemAsset, station.x + station.w / 2 - size / 2, station.y + station.h / 2 - size / 2, size, size)) {
-        // Non-table items can keep their original art.
-      } else {
-        const icon = station.item.icon || ITEM_ICONS[station.item.key] || "🍽";
-        const fontSize = isDiningTable
-          ? Math.round(Math.min(station.w, station.h) * 0.5)
-          : Math.max(isRaw ? 30 : 22, station.h * (isRaw ? 0.48 : 0.4));
-        ctx.font = `${fontSize}px serif`;
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#f5f0de";
-        ctx.fillText(icon, station.x + station.w / 2, station.y + station.h / 2 + (isDiningTable ? 9 : 8));
-      }
+      const fontSize = isDiningTable
+        ? Math.round(Math.min(station.w, station.h) * 0.5)
+        : Math.max(isRaw ? 30 : 22, station.h * (isRaw ? 0.48 : 0.4));
+      this.drawItemVisual(
+        ctx,
+        station.item.key,
+        station.x + station.w / 2,
+        station.y + station.h / 2,
+        size,
+        station.item.icon || ITEM_ICONS[station.item.key] || "🍽",
+        fontSize
+      );
     }
 
     if (station.type === "diningTable" && station.seatedOrder) {
       const isPremium = (station.seatedOrder.recipe.unlockLevel || 1) >= 3 || station.seatedOrder.recipe.points >= 200;
       const recipeKey = station.seatedOrder.recipeKey;
       const presentation = RECIPE_PRESENTATION[recipeKey] || {};
-      ctx.fillStyle = "#f5ede0";
-      ctx.font = `${Math.round(Math.min(station.w, station.h) * (isPremium ? 0.5 : 0.46))}px serif`;
-      ctx.textAlign = "center";
       ctx.shadowBlur = isPremium ? 20 : 10;
       ctx.shadowColor = presentation.accent || (isPremium ? "#f5c842" : "rgba(255, 245, 225, 0.55)");
-      ctx.fillText(station.seatedOrder.recipe.icon, station.x + station.w / 2, station.y + station.h / 2 + 10);
+      this.drawItemVisual(
+        ctx,
+        recipeKey,
+        station.x + station.w / 2,
+        station.y + station.h / 2 + 2,
+        Math.min(station.w, station.h) * (isPremium ? 0.52 : 0.48),
+        station.seatedOrder.recipe.icon
+      );
       ctx.shadowBlur = 0;
 
       if (HOT_RECIPES.has(recipeKey) && (presentation.steamCount || 0) > 0) {
@@ -429,13 +441,16 @@ export class Renderer {
     ctx.save();
 
     if (player.heldItem) {
-      const heldAsset = this.getAsset(ITEM_ASSET[player.heldItem.key]);
       const heldSize = player.radius * (player.heldItem.state === "raw" ? 2.25 : 1.85);
-      if (!this.drawImageSafe(ctx, heldAsset, player.x - heldSize / 2, player.y - player.radius - heldSize - 2, heldSize, heldSize)) {
-        ctx.font = player.heldItem.state === "raw" ? "34px serif" : "28px serif";
-        ctx.textAlign = "center";
-        ctx.fillText(player.heldItem.icon || "🍽", player.x, player.y - (player.heldItem.state === "raw" ? 36 : 30));
-      }
+      this.drawItemVisual(
+        ctx,
+        player.heldItem.key,
+        player.x,
+        player.y - player.radius - heldSize / 2 - 2,
+        heldSize,
+        player.heldItem.icon || "🍽",
+        player.heldItem.state === "raw" ? 34 : 28
+      );
     }
 
     ctx.restore();
@@ -523,8 +538,8 @@ export class Renderer {
     if (this.hud.controls) {
       this.hud.controls.textContent =
         game.state === "playing"
-          ? "WASD / yön tuşları ile hareket et • E veya Boşluk ile etkileşime geç • Escape ile duraklat"
-          : "Enter veya buton ile başlat • R ile yeniden başlat • Tab ile menüyü aç";
+          ? "WASD / yön tuşları ile hareket et • E veya Boşluk ile etkileşime geç • T ile Ramazan topu • Escape ile duraklat"
+          : "Enter veya buton ile başlat • R ile yeniden başlat • T ile Ramazan topu • Tab ile menüyü aç";
     }
 
     if (this.hud.hurma) this.hud.hurma.textContent = String(game.progress.totalHurma);
@@ -576,14 +591,46 @@ export class Renderer {
     if (this.hud.status) {
       const status = game.getStatusText();
       if (status) {
-        this.hud.status.innerHTML = `
-          <div class="status-card">
-            <div class="status-kicker">Ramadan Looper</div>
-            <h2>${status.title}</h2>
-            <p>${status.subtitle}</p>
-            <span>${status.action}</span>
-          </div>
-        `;
+        this.hud.status.innerHTML =
+          game.state === "tutorial"
+            ? `
+              <div class="status-card tutorial-card">
+                <div class="status-kicker">Ramadan Looper</div>
+                <h2>${status.title}</h2>
+                <p>${status.subtitle}</p>
+                <div class="tutorial-countdown">${Math.max(1, Math.ceil(game.tutorialCountdownMs / 1000))} sn sonra otomatik baslayacak</div>
+                <div class="tutorial-steps">
+                  <article class="tutorial-step">
+                    <span class="tutorial-icon">🥘</span>
+                    <strong>1. Dolaptan Al</strong>
+                    <span>Yemegi dolaptan alip eline gecir.</span>
+                  </article>
+                  <article class="tutorial-step">
+                    <span class="tutorial-icon">🔥</span>
+                    <strong>2. Firinda Isit</strong>
+                    <span>Firina birak, pisme bitince geri al.</span>
+                  </article>
+                  <article class="tutorial-step">
+                    <span class="tutorial-icon">🍽</span>
+                    <strong>3. Masaya Servis Et</strong>
+                    <span>Dogru masaya yetis ve hedef teslimata ulas.</span>
+                  </article>
+                </div>
+                <div class="tutorial-actions">
+                  <button type="button" class="tutorial-button primary" data-tutorial-dismiss>Basla</button>
+                  <button type="button" class="tutorial-button" data-tutorial-skip>Bir Daha Gosterme</button>
+                </div>
+                <span>${status.action}</span>
+              </div>
+            `
+            : `
+              <div class="status-card">
+                <div class="status-kicker">Ramadan Looper</div>
+                <h2>${status.title}</h2>
+                <p>${status.subtitle}</p>
+                <span>${status.action}</span>
+              </div>
+            `;
         this.hud.status.classList.add("visible");
       } else {
         this.hud.status.innerHTML = "";

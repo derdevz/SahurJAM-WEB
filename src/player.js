@@ -217,7 +217,7 @@ export class Player {
       if (!station.seatedOrder) return { message: "Bu masada bekleyen kimse yok", didInteract: true };
       if (!this.heldItem.recipeKey) return { message: "Bu siparisle eslesmiyor", didInteract: true, fail: true };
       if (this.heldItem.state !== "heated") {
-        return { message: "Servisten once firinda isitman gerekiyor", didInteract: true, fail: true };
+        return { message: "Bu yemek once isitilmali. Teslim etmeden once firinda isitman gerekiyor.", didInteract: true, fail: true };
       }
 
       const result = orderManager.completeOrder(this.heldItem.recipeKey, station.tableId);

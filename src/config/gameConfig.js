@@ -14,7 +14,8 @@ export const GAME_CONFIG = {
   },
   match: {
     durationMs: 60000,
-    levelDurationsMs: [60000, 90000, 120000, 150000, 180000]
+    levelDurationsMs: [60000, 90000, 120000, 150000, 180000],
+    tutorialBonusMs: 7000
   },
   notifications: {
     durationMs: 1600
@@ -78,9 +79,11 @@ export const GAME_CONFIG = {
         name: "Hizli Adimlar",
         description: "Asci daha hizli hareket eder.",
         levels: [
-          { cost: 20, bonus: { playerSpeedMultiplier: 1.08 } },
-          { cost: 55, bonus: { playerSpeedMultiplier: 1.1 } },
-          { cost: 110, bonus: { playerSpeedMultiplier: 1.12 } }
+          { cost: 45, bonus: { playerSpeedMultiplier: 1.08 } },
+          { cost: 110, bonus: { playerSpeedMultiplier: 1.1 } },
+          { cost: 210, bonus: { playerSpeedMultiplier: 1.12 } },
+          { cost: 340, bonus: { playerSpeedMultiplier: 1.14 } },
+          { cost: 480, bonus: { playerSpeedMultiplier: 1.16 } }
         ]
       },
       {
@@ -89,9 +92,11 @@ export const GAME_CONFIG = {
         name: "Hizli Tezgah",
         description: "Pisirme sureleri kisalir.",
         levels: [
-          { cost: 25, bonus: { processSpeedMultiplier: 1.1 } },
-          { cost: 65, bonus: { processSpeedMultiplier: 1.12 } },
-          { cost: 130, bonus: { processSpeedMultiplier: 1.15 } }
+          { cost: 55, bonus: { processSpeedMultiplier: 1.1 } },
+          { cost: 130, bonus: { processSpeedMultiplier: 1.12 } },
+          { cost: 245, bonus: { processSpeedMultiplier: 1.15 } },
+          { cost: 380, bonus: { processSpeedMultiplier: 1.18 } },
+          { cost: 540, bonus: { processSpeedMultiplier: 1.22 } }
         ]
       },
       {
@@ -100,9 +105,11 @@ export const GAME_CONFIG = {
         name: "Sabirli Misafirler",
         description: "Siparisler daha gec suresi dolar.",
         levels: [
-          { cost: 30, bonus: { orderTimeMultiplier: 1.12 } },
-          { cost: 75, bonus: { orderTimeMultiplier: 1.15 } },
-          { cost: 145, bonus: { orderTimeMultiplier: 1.18 } }
+          { cost: 60, bonus: { orderTimeMultiplier: 1.12 } },
+          { cost: 145, bonus: { orderTimeMultiplier: 1.15 } },
+          { cost: 270, bonus: { orderTimeMultiplier: 1.18 } },
+          { cost: 410, bonus: { orderTimeMultiplier: 1.22 } },
+          { cost: 580, bonus: { orderTimeMultiplier: 1.26 } }
         ]
       },
       {
@@ -111,9 +118,11 @@ export const GAME_CONFIG = {
         name: "Bereket Sofrasi",
         description: "Skor ve hurma kazanimi artar.",
         levels: [
-          { cost: 35, bonus: { scoreMultiplier: 1.08, hurmaMultiplier: 1.1 } },
-          { cost: 85, bonus: { scoreMultiplier: 1.1, hurmaMultiplier: 1.12 } },
-          { cost: 160, bonus: { scoreMultiplier: 1.12, hurmaMultiplier: 1.15 } }
+          { cost: 70, bonus: { scoreMultiplier: 1.08, hurmaMultiplier: 1.1 } },
+          { cost: 165, bonus: { scoreMultiplier: 1.1, hurmaMultiplier: 1.12 } },
+          { cost: 300, bonus: { scoreMultiplier: 1.12, hurmaMultiplier: 1.15 } },
+          { cost: 455, bonus: { scoreMultiplier: 1.15, hurmaMultiplier: 1.18 } },
+          { cost: 640, bonus: { scoreMultiplier: 1.18, hurmaMultiplier: 1.22 } }
         ]
       }
     ]

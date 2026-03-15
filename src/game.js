@@ -79,6 +79,7 @@ export class Game {
     this.upgradeEffects = calculateUpgradeEffects(this.config, this.progress.upgrades);
     this.bestComboThisRun = 0;
     this.ordersCollapsed = false;
+    this.tutorialCountdownMs = 0;
 
     this.stations = this.createStations();
     this.player = this.createPlayer(this.worldW, this.worldH);
@@ -131,6 +132,12 @@ export class Game {
 
   applySettings() {
     this.audio.enabled = this.progress.settings.soundEnabled;
+    if (!this.progress.settings.soundEnabled) {
+      this.audio.stopAll();
+    } else {
+      this.audio.setSahurActive(this.state === "playing" && this.dayPhase === "sahur");
+      this.audio.setCookingActive(this.state === "playing" && this.stations.some((station) => station.type === "oven" && station.state === "processing"));
+    }
     document.body.classList.toggle("reduced-motion", !this.progress.settings.animationsEnabled);
     document.body.classList.toggle("hide-hints", !this.progress.settings.showHints);
   }
@@ -298,7 +305,8 @@ export class Game {
 
   getCurrentLevelDuration() {
     const durations = this.config.match.levelDurationsMs || [this.config.match.durationMs];
-    return durations[Math.min(this.level - 1, durations.length - 1)] || this.config.match.durationMs;
+    const baseDuration = durations[Math.min(this.level - 1, durations.length - 1)] || this.config.match.durationMs;
+    return baseDuration + (this.level === 1 ? this.config.match.tutorialBonusMs || 0 : 0);
   }
 
   getStatusText() {
@@ -307,6 +315,14 @@ export class Game {
         title: `SEVIYE ${this.level} TAMAMLANDI`,
         subtitle: `Skor ${this.score} • ${this.completedOrders}/${this.getCurrentLevelTarget()} teslimat • ${this.hurma} hurma`,
         action: "Sonraki seviye için Enter, yeni tur için R"
+      };
+    }
+
+    if (this.state === "tutorial") {
+      return {
+        title: "NASIL OYNANIR",
+        subtitle: "Dolaptan yemegi al, firinda isit, dogru masaya servisi yap. Hedef teslimat sayisina sure bitmeden ulas.",
+        action: "WASD ile hareket et • E veya Bosluk ile etkiles • Baslamak icin Enter, E veya Bosluk"
       };
     }
 
@@ -439,6 +455,9 @@ export class Game {
           this.startNextLevel();
           this.audio.playMenuStart();
         }
+        if (this.state === "tutorial") {
+          this.dismissTutorial();
+        }
       }
 
       if (e.code === "KeyR" && this.state !== "playing") {
@@ -453,8 +472,19 @@ export class Game {
         }
       }
 
+      if (e.code === "KeyT" && !e.repeat) {
+        this.audio.playRamadanCannon();
+        if (this.state !== "tutorial") {
+          this.notify("Ramazan topu test sesi caldi");
+        }
+      }
+
       if (e.code === "KeyE" || e.code === "Space") {
         e.preventDefault();
+        if (this.state === "tutorial") {
+          this.dismissTutorial();
+          return;
+        }
         this.interactHeld = true;
         if (this.state === "playing") {
           this.interactBufferMs = this.interactBufferWindowMs;
@@ -471,7 +501,7 @@ export class Game {
   }
 
   startRun() {
-    this.state = "playing";
+    this.state = this.progress.settings.showTutorial ? "tutorial" : "playing";
     this.score = 0;
     this.completedOrders = 0;
     this.level = 1;
@@ -486,6 +516,7 @@ export class Game {
     this.comboTimer = 0;
     this.comboMultiplier = 1;
     this.bestComboThisRun = 0;
+    this.tutorialCountdownMs = this.state === "tutorial" ? 5000 : 0;
 
     this.player = this.createPlayer(this.worldW, this.worldH);
     this.stations = this.createStations();
@@ -499,8 +530,23 @@ export class Game {
     this.orderManager.setCyclePhase(this.dayPhase);
     this.orderManager.setDiningTables(this.getDiningTableIds());
     this.syncDiningTables();
+    this.audio.setSahurActive(false);
+    this.audio.setCookingActive(false);
 
+    this.notify(`${this.state === "tutorial" ? "Egitim acik" : this.getPhaseConfig().notify} • Hedef ${this.getCurrentLevelTarget()} teslimat`);
+  }
+
+  dismissTutorial() {
+    if (this.state !== "tutorial") return;
+    this.tutorialCountdownMs = 0;
+    this.state = "playing";
     this.notify(`${this.getPhaseConfig().notify} • Hedef ${this.getCurrentLevelTarget()} teslimat`);
+  }
+
+  skipTutorialForever() {
+    this.progress.settings.showTutorial = false;
+    this.persistProgress();
+    this.dismissTutorial();
   }
 
   startNextLevel() {
@@ -527,6 +573,8 @@ export class Game {
     this.orderManager.setCyclePhase(this.dayPhase);
     this.orderManager.setDiningTables(this.getDiningTableIds());
     this.syncDiningTables();
+    this.audio.setSahurActive(false);
+    this.audio.setCookingActive(false);
     this.notify(`Seviye ${this.level} basladi • Hedef ${this.getCurrentLevelTarget()} teslimat`);
   }
 
@@ -540,8 +588,13 @@ export class Game {
     this.phaseTimer = this.levelElapsedMs % this.phaseDuration;
     if (nextPhase === this.dayPhase) return;
 
+    const previousPhase = this.dayPhase;
     this.dayPhase = nextPhase;
     this.orderManager.setCyclePhase(this.dayPhase);
+    this.audio.setSahurActive(this.dayPhase === "sahur");
+    if (previousPhase === "sahur" && this.dayPhase === "iftar") {
+      this.audio.playRamadanCannon();
+    }
     this.particles.emit(this.dayPhase === "iftar" ? "phaseWarm" : "phaseCool", this.worldW * 0.5, 64, { count: 12 });
     this.notify(this.getPhaseConfig().notify);
   }
@@ -596,6 +649,7 @@ export class Game {
     if (result?.fail) {
       this.breakCombo();
       this.audio.playFail();
+      this.audio.playWarning?.();
       this.addCameraShake(4, 100);
     }
 
@@ -636,7 +690,7 @@ export class Game {
         });
       }
 
-      this.audio.playServe(this.comboMultiplier);
+      this.audio.playOrderSuccess();
       this.addCameraShake(6, 140);
 
       this.syncDiningTables();
@@ -655,11 +709,16 @@ export class Game {
   }
 
   updateStations(delta, holdChopStation) {
+    let ovenProcessing = false;
     for (const station of this.stations) {
       const wasState = station.state;
 
       const holdActive = station.type === "chopping" ? station === holdChopStation : true;
       station.update(delta, holdActive, this.upgradeEffects.processSpeedMultiplier);
+
+      if (station.type === "oven" && station.state === "processing") {
+        ovenProcessing = true;
+      }
 
       if (holdActive && station.type === "chopping" && station.state === "processing") {
         this.lastChopSoundMs += delta;
@@ -712,6 +771,7 @@ export class Game {
         this.addCameraShake(5, 110);
       }
     }
+    this.audio.setCookingActive(ovenProcessing);
   }
 
   notify(message) {
@@ -745,7 +805,16 @@ export class Game {
       if (this.comboTimer <= 0) this.breakCombo();
     }
 
+    if (this.state === "tutorial" && this.tutorialCountdownMs > 0) {
+      this.tutorialCountdownMs = Math.max(0, this.tutorialCountdownMs - delta);
+      if (this.tutorialCountdownMs <= 0) {
+        this.dismissTutorial();
+      }
+    }
+
     if (this.state !== "playing") {
+      this.audio.setCookingActive(false);
+      this.audio.setSahurActive(false);
       this.particles.update(delta);
       return;
     }
@@ -776,7 +845,7 @@ export class Game {
       this.state = targetMet ? "levelComplete" : "levelFailed";
       this.finalizeRunProgress();
       if (targetMet) {
-        this.audio.playServe(1);
+        this.audio.playMenuStart();
         this.notify(`Seviye ${this.level} tamamlandi`);
       } else {
         this.audio.playFail();
