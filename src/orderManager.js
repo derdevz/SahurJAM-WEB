@@ -22,6 +22,7 @@ export class OrderManager {
     this.currentPhase = config.cycle.initialPhase;
     this.diningTableIds = modifiers.diningTableIds || [];
     this.level = modifiers.level || 1;
+    this.baseOrderTimeLimit = modifiers.baseOrderTimeLimit || config.orders.timeLimitMs;
 
     this.setCyclePhase(this.currentPhase);
     this.spawnOrder();
@@ -34,6 +35,10 @@ export class OrderManager {
 
   setLevel(level) {
     this.level = Math.max(1, level || 1);
+  }
+
+  setBaseOrderTimeLimit(timeLimitMs) {
+    this.baseOrderTimeLimit = Math.max(4000, Math.round(timeLimitMs || this.config.orders.timeLimitMs));
   }
 
   getUnlockedRecipeEntries() {
@@ -100,7 +105,7 @@ export class OrderManager {
       recipe,
       recipeKey: key,
       tableId,
-      timeLimit: Math.round(this.config.orders.timeLimitMs * this.orderTimeMultiplier),
+      timeLimit: Math.round(this.baseOrderTimeLimit * this.orderTimeMultiplier),
       elapsed: 0,
       tipMultiplier: this.phaseTipMultiplier
     };

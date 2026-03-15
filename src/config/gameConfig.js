@@ -7,13 +7,14 @@ export const GAME_CONFIG = {
   },
   player: {
     radius: 26,
-    speed: 130,
+    speed: 155,
     interactRange: 40,
     spawnX: 512,
     spawnY: 480
   },
   match: {
-    durationMs: 60000
+    durationMs: 60000,
+    levelDurationsMs: [60000, 90000, 120000, 150000, 180000]
   },
   notifications: {
     durationMs: 1600
@@ -46,6 +47,7 @@ export const GAME_CONFIG = {
   },
   orders: {
     maxActive: 3,
+    timeLimitRatio: 0.65,
     timeLimitMs: 30000,
     expirePenalty: -30,
     expireMessage: "Siparis kacirildi! -30 puan"
@@ -58,7 +60,7 @@ export const GAME_CONFIG = {
     maxOrdersCap: 4
   },
   progress: {
-    storageKey: "iftar-vakti-progress",
+    storageKey: "ramadan-looper-progress",
     startingHurma: 120
   },
   settings: {
@@ -85,7 +87,7 @@ export const GAME_CONFIG = {
         id: "quickPrep",
         icon: "🔪",
         name: "Hizli Tezgah",
-        description: "Pisirme ve dograma sureleri kisalir.",
+        description: "Pisirme sureleri kisalir.",
         levels: [
           { cost: 25, bonus: { processSpeedMultiplier: 1.1 } },
           { cost: 65, bonus: { processSpeedMultiplier: 1.12 } },

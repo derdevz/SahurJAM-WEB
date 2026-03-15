@@ -149,6 +149,12 @@ document.getElementById("upgradeList").addEventListener("click", (event) => {
   }
 });
 
+hudRefs.orders.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-orders-toggle]");
+  if (!toggle) return;
+  game.toggleOrdersCollapsed();
+});
+
 window.addEventListener("keydown", (event) => {
   if (event.code === "Tab" && !event.repeat) {
     event.preventDefault();

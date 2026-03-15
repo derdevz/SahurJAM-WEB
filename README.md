@@ -1,6 +1,6 @@
-# Iftar Vakti
+# Ramadan Looper
 
-Canvas tabanli kisa sureli bir mutfak yonetim oyunu. Oyuncu iftar ve sahur dongusu arasinda siparis alip hazirlar.
+Canvas tabanli kisa sureli bir mutfak yonetim oyunu. Oyuncu iftar ve sahur dongusu arasinda yemekleri dolaptan alip firinda isitir ve masalara servis eder.
 
 ## Ozellikler
 
@@ -22,7 +22,6 @@ Ardindan `http://127.0.0.1:3000` adresini ac.
 
 - `WASD` veya ok tuslari: hareket
 - `E` veya `Bosluk`: etkilesim
-- Dograma istasyonunda etkilesim tusunu basili tut
 - `Enter`: baslat
 - `R`: oyun bittiğinde yeniden baslat
 
@@ -54,15 +53,15 @@ Ardindan `http://127.0.0.1:3000` adresini ac.
    - Yeterli hurma varsa seviye artar ve bildirim cikar.
    - `Ses`, `Animasyon`, `Yardim Metinleri`, `Duraklat` butonlari durum degistirir.
 3. Mutfak etkilesimi
-   - Buzdolabindan malzeme alin.
-   - Dogru istasyonda `ocak`, `firin`, `dograma`, `tabaklama` zinciri tamamlanir.
-   - Hazir yemek stok masasina birakilir ve geri alinabilir.
+   - Buzdolabindan yemek alin.
+   - Firinda yeterli sure isitilir.
+   - Isinan yemek dogru masaya servis edilir.
 4. Masa servisi
    - Siparis cikan masaya dogru yemek goturulur.
    - Dogru serviste skor ve hurma artar.
    - Yanlis serviste hata bildirimi gelir.
 5. Seviye akisi
-   - Ilk 30 saniye `iftar`, sonraki 30 saniye `sahur` olur.
-   - 60 saniye sonunda `seviye tamamlandi` ekrani gelir.
-   - `Enter` ile sonraki seviye baslar.
-   - Ust seviyelerde yeni yemekler siparis havuzuna girer.
+   - Her seviyede sure farklidir ve iki faza bolunur: `iftar` ve `sahur`.
+   - Seviye sonunda hedef teslimat tamamlanmadiysa seviye basarisiz olur.
+   - `Enter` ile sonraki seviye veya yeniden deneme baslar.
+   - Ust seviyelerde sure, hedef ve tempo degisir.

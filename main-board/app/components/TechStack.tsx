@@ -104,7 +104,7 @@ export function TechStack() {
             </p>
 
             <a
-              href="https://github.com/yourusername/iftar-vakti"
+              href="https://github.com/yourusername/ramadan-looper"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-all duration-300 hover:scale-105"

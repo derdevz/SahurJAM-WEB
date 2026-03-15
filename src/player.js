@@ -232,7 +232,7 @@ export class Player {
       if (!this.heldItem.recipeKey) {
         return { message: "Stok masalarina sadece hazir yemek koyabilirsin", didInteract: true, fail: true };
       }
-      if (station.item) return { message: "Bu stok masasi dolu", didInteract: true };
+      if (station.item) return { message: "Bu servis noktasi dolu", didInteract: true };
       station.item = this.heldItem;
       station.state = "done";
       this.heldItem = null;

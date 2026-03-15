@@ -144,6 +144,37 @@ export class Renderer {
       return true;
     }
 
+    if (station.type === "ramadanCannon") {
+      const wheelY = station.y + station.h - 10;
+      ctx.fillStyle = "#3f2a1a";
+      ctx.fillRect(station.x + 18, station.y + 28, station.w - 30, 8);
+      ctx.fillRect(station.x + 22, station.y + 22, 8, 22);
+      ctx.fillRect(station.x + station.w - 26, station.y + 22, 8, 22);
+
+      ctx.fillStyle = "#232a32";
+      ctx.beginPath();
+      ctx.roundRect(station.x + 20, station.y + 6, station.w - 22, 18, 8);
+      ctx.fill();
+      ctx.fillStyle = "#4f5e6c";
+      ctx.fillRect(station.x + station.w - 6, station.y + 11, 10, 8);
+      ctx.strokeStyle = "rgba(180, 210, 240, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(station.x + 24, station.y + 10, station.w - 34, 10);
+
+      ctx.fillStyle = "#2f2217";
+      ctx.beginPath();
+      ctx.arc(station.x + 24, wheelY, 10, 0, Math.PI * 2);
+      ctx.arc(station.x + station.w - 22, wheelY, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(236, 200, 120, 0.4)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(station.x + 24, wheelY, 6, 0, Math.PI * 2);
+      ctx.arc(station.x + station.w - 22, wheelY, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      return true;
+    }
+
     return false;
   }
 
@@ -275,13 +306,19 @@ export class Renderer {
     if (station.item) {
       const itemAsset = this.getAsset(ITEM_ASSET[station.item.key]);
       const isRaw = station.item.state === "raw";
-      const size = Math.min(station.w, station.h) * (station.type === "diningTable" ? 0.72 : isRaw ? 0.72 : 0.66);
-      if (!this.drawImageSafe(ctx, itemAsset, station.x + station.w / 2 - size / 2, station.y + station.h / 2 - size / 2, size, size)) {
+      const isDiningTable = station.type === "diningTable";
+      const size = Math.min(station.w, station.h) * (isDiningTable ? 0.68 : isRaw ? 0.72 : 0.66);
+      if (!isDiningTable && this.drawImageSafe(ctx, itemAsset, station.x + station.w / 2 - size / 2, station.y + station.h / 2 - size / 2, size, size)) {
+        // Non-table items can keep their original art.
+      } else {
         const icon = station.item.icon || ITEM_ICONS[station.item.key] || "🍽";
-        ctx.font = `${Math.max(isRaw ? 30 : 22, station.h * (station.type === "diningTable" ? 0.48 : isRaw ? 0.48 : 0.4))}px serif`;
+        const fontSize = isDiningTable
+          ? Math.round(Math.min(station.w, station.h) * 0.5)
+          : Math.max(isRaw ? 30 : 22, station.h * (isRaw ? 0.48 : 0.4));
+        ctx.font = `${fontSize}px serif`;
         ctx.textAlign = "center";
         ctx.fillStyle = "#f5f0de";
-        ctx.fillText(icon, station.x + station.w / 2, station.y + station.h / 2 + 8);
+        ctx.fillText(icon, station.x + station.w / 2, station.y + station.h / 2 + (isDiningTable ? 9 : 8));
       }
     }
 
@@ -290,7 +327,7 @@ export class Renderer {
       const recipeKey = station.seatedOrder.recipeKey;
       const presentation = RECIPE_PRESENTATION[recipeKey] || {};
       ctx.fillStyle = "#f5ede0";
-      ctx.font = `${Math.max(isPremium ? 34 : 28, station.h * (isPremium ? 0.54 : 0.46))}px serif`;
+      ctx.font = `${Math.round(Math.min(station.w, station.h) * (isPremium ? 0.5 : 0.46))}px serif`;
       ctx.textAlign = "center";
       ctx.shadowBlur = isPremium ? 20 : 10;
       ctx.shadowColor = presentation.accent || (isPremium ? "#f5c842" : "rgba(255, 245, 225, 0.55)");
@@ -349,12 +386,14 @@ export class Renderer {
       ctx.stroke();
     }
 
-    if (["prepTable", "diningTable", "fridge"].includes(station.type)) {
+    if (["prepTable", "diningTable", "fridge", "oven", "ramadanCannon"].includes(station.type)) {
       ctx.fillStyle = "#eadcc0";
-      ctx.font = "11px Georgia";
+      ctx.font = station.type === "diningTable" ? "bold 14px Georgia" : "12px Georgia";
       ctx.textAlign = "center";
-      const label = station.type === "diningTable" ? `🪑 ${station.label}` : station.label;
-      ctx.fillText(label, station.x + station.w / 2, station.y + station.h - 8);
+      const label = station.label;
+      const labelOffset = station.type === "fridge" ? 16 : station.type === "oven" ? 15 : station.type === "ramadanCannon" ? 18 : 12;
+      const labelX = station.x + station.w / 2 + (station.type === "oven" ? 16 : 0);
+      ctx.fillText(label, labelX, station.y + station.h + labelOffset);
     }
 
     ctx.restore();
@@ -439,16 +478,22 @@ export class Renderer {
       `;
     }
 
-    const ordersHtml = game.orderManager.activeOrders
+    const orderCardsHtml = game.orderManager.activeOrders
       .map((order) => {
         const leftRatio = Math.max(0, 1 - order.elapsed / order.timeLimit);
         const width = Math.round(leftRatio * 100);
         const color = game.orderManager.getUrgencyColor(order);
+        const secondsLeft = Math.max(0, Math.ceil((order.timeLimit - order.elapsed) / 1000));
         return `
           <div class="order-card">
             <div class="order-head">
-              <div class="order-title">${order.recipe.icon} ${order.recipe.name}</div>
-              <div class="order-meta">${order.tableId?.replace("table-", "Masa ")} • +${order.recipe.points}</div>
+              <div class="order-table">${order.tableId?.replace("table-", "Masa ")}</div>
+              <div class="order-points">+${order.recipe.points}</div>
+            </div>
+            <div class="order-title">${order.recipe.icon} ${order.recipe.name}</div>
+            <div class="order-foot">
+              <div class="order-meta">Sicak servis bekliyor</div>
+              <div class="order-time">${secondsLeft}s</div>
             </div>
             <div class="order-bar-wrap">
               <div class="order-bar" style="width:${width}%;background:${color};"></div>
@@ -458,7 +503,22 @@ export class Renderer {
       })
       .join("");
 
-    this.hud.orders.innerHTML = ordersHtml;
+    this.hud.orders.innerHTML = `
+      <div class="orders-panel ${game.ordersCollapsed ? "is-collapsed" : ""}">
+        <div class="orders-top">
+          <strong>Aktif Siparisler</strong>
+          <div class="orders-top-actions">
+            <span>${game.orderManager.activeOrders.length}</span>
+            <button type="button" class="orders-toggle" data-orders-toggle aria-expanded="${String(!game.ordersCollapsed)}">
+              ${game.ordersCollapsed ? "AC" : "KAPAT"}
+            </button>
+          </div>
+        </div>
+        <div class="orders-stack">
+          ${orderCardsHtml || `<div class="orders-empty">Yeni siparis bekleniyor</div>`}
+        </div>
+      </div>
+    `;
 
     if (this.hud.controls) {
       this.hud.controls.textContent =
@@ -518,7 +578,7 @@ export class Renderer {
       if (status) {
         this.hud.status.innerHTML = `
           <div class="status-card">
-            <div class="status-kicker">İftar Vakti</div>
+            <div class="status-kicker">Ramadan Looper</div>
             <h2>${status.title}</h2>
             <p>${status.subtitle}</p>
             <span>${status.action}</span>
@@ -576,7 +636,7 @@ export class Renderer {
   }
 
   drawMenu(ctx) {
-    this.drawOverlay(ctx, "İftar Vakti", "Başlamak için Enter | Hareket: WASD | Etkileşim: E / Boşluk");
+    this.drawOverlay(ctx, "Ramadan Looper", "Başlamak için Enter | Hareket: WASD | Etkileşim: E / Boşluk");
   }
 
   drawOverlay(ctx, title, subtitle) {

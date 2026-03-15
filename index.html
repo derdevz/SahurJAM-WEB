@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Iftar Vakti</title>
+    <title>Ramadan Looper</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -15,20 +15,20 @@
       <aside id="metaPanel" class="meta-panel" aria-hidden="true">
         <div class="panel-topbar">
           <div class="panel-title-wrap">
-            <div class="panel-kicker">Oyun Menüsü</div>
-            <strong>Kontrol Merkezi</strong>
-            <p>İlerlemeni takip et, güçlendirmeleri yönet ve oyunu kendi ritmine göre düzenle.</p>
+            <div class="panel-kicker">Servis Paneli</div>
+            <strong>Mutfak Durumu</strong>
+            <p>Turu takip et, guclendirmeleri yonet ve ayarlari buradan duzenle.</p>
           </div>
           <button id="panelClose" class="panel-close" type="button" aria-label="Paneli kapat">KAPAT</button>
         </div>
         <div class="panel-tabs" role="tablist" aria-label="Menü sekmeleri">
-          <button class="panel-tab is-active" type="button" data-panel-tab="progress" role="tab" aria-selected="true">İlerleme</button>
-          <button class="panel-tab" type="button" data-panel-tab="upgrades" role="tab" aria-selected="false">Yükseltmeler</button>
-          <button class="panel-tab" type="button" data-panel-tab="controls" role="tab" aria-selected="false">Kontroller</button>
+          <button class="panel-tab is-active" type="button" data-panel-tab="progress" role="tab" aria-selected="true">Durum</button>
+          <button class="panel-tab" type="button" data-panel-tab="upgrades" role="tab" aria-selected="false">Gelisim</button>
+          <button class="panel-tab" type="button" data-panel-tab="controls" role="tab" aria-selected="false">Tuslar</button>
           <button class="panel-tab" type="button" data-panel-tab="settings" role="tab" aria-selected="false">Ayarlar</button>
         </div>
         <div class="panel-section is-active" data-panel-view="progress">
-          <div class="panel-kicker">İlerleme</div>
+          <div class="panel-kicker">Genel Durum</div>
           <div class="meta-stats">
             <div class="meta-stat"><span>Hurma</span><strong id="hurmaCount">0</strong></div>
             <div class="meta-stat"><span>En Yüksek Skor</span><strong id="highScore">0</strong></div>
@@ -36,20 +36,20 @@
           </div>
         </div>
         <div class="panel-section" data-panel-view="upgrades">
-          <div class="panel-kicker">Yükseltmeler</div>
+          <div class="panel-kicker">Gelistirmeler</div>
           <div id="upgradeList" class="upgrade-list"></div>
         </div>
         <div class="panel-section" data-panel-view="controls">
-          <div class="panel-kicker">Kontroller</div>
+          <div class="panel-kicker">Oynanis Tuslari</div>
           <div class="guide-list">
             <div>WASD / yön tuşları: hareket</div>
-            <div>E / Boşluk: istasyonla etkileşim</div>
-            <div>Escape: oyunu duraklat</div>
-            <div>Doğrama sırasında tuşu basılı tut</div>
+            <div>E / Boşluk: dolap, firin ve masa ile etkilesim</div>
+            <div>Escape: oyunu duraklat veya devam ettir</div>
+            <div>Tab: menuyu ac veya kapat</div>
           </div>
         </div>
         <div class="panel-section panel-actions" data-panel-view="settings">
-          <div class="panel-kicker">Ayarlar</div>
+          <div class="panel-kicker">Oyun Ayarlari</div>
           <button id="pauseButton" type="button">DURAKLAT</button>
           <button id="soundButton" type="button">SES: AÇIK</button>
           <button id="animationsButton" type="button">ANİMASYON: AÇIK</button>
@@ -76,20 +76,9 @@
         <div class="start-content">
           <div class="start-hero-mark">
             <span class="start-crescent" aria-hidden="true"></span>
-            <h1 class="start-title">IFTAR VAKTI</h1>
+            <h1 class="start-title">RAMADAN LOOPER</h1>
           </div>
-          <p class="start-subtitle">Dolaptan al, firinda isit, sicak servisi yetistir.</p>
-          <div class="start-cta-row">
-            <button id="startButton" class="start-button" type="button">SERVİSE BAŞLA</button>
-            <div class="start-play">
-              <strong>Oynanış</strong>
-              <div class="start-note">
-                <span>WASD ile hareket et</span>
-                <span>E veya Boşluk ile etkileş</span>
-                <span>Tab ile menüyü aç</span>
-              </div>
-            </div>
-          </div>
+          <button id="startButton" class="start-button" type="button">OYUNU BASLAT</button>
         </div>
       </div>
       <canvas id="gameCanvas" width="1024" height="579"></canvas>

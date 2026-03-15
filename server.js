@@ -42,5 +42,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-  console.log(`Iftar Vakti http://${host}:${port} adresinde hazir`);
+  console.log(`Ramadan Looper http://${host}:${port} adresinde hazir`);
 });

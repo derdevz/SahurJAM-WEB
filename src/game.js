@@ -78,6 +78,7 @@ export class Game {
     this.layoutTransform = this.computeLayoutTransform(this.worldW, this.worldH);
     this.upgradeEffects = calculateUpgradeEffects(this.config, this.progress.upgrades);
     this.bestComboThisRun = 0;
+    this.ordersCollapsed = false;
 
     this.stations = this.createStations();
     this.player = this.createPlayer(this.worldW, this.worldH);
@@ -104,8 +105,13 @@ export class Game {
     const levelIndex = Math.max(0, this.level - 1);
     const maxOrdersBoost = Math.floor(levelIndex / this.config.levels.maxOrdersStepEvery);
     const maxOrdersCap = Math.min(this.getDiningTableIds().length || this.config.orders.maxActive, this.config.levels.maxOrdersCap);
+    const baseOrderTimeLimit = Math.max(
+      6000,
+      Math.round(this.getCurrentLevelDuration() * (this.config.orders.timeLimitRatio || 0.5))
+    );
     return {
       maxOrders: Math.min(this.config.orders.maxActive + maxOrdersBoost, maxOrdersCap),
+      baseOrderTimeLimit,
       orderTimeMultiplier: this.upgradeEffects.orderTimeMultiplier * Math.max(0.55, 1 - levelIndex * this.config.levels.orderTimeStep),
       spawnRateMultiplier: Math.max(0.45, 1 - levelIndex * this.config.levels.spawnRateStep),
       diningTableIds: this.getDiningTableIds(),
@@ -143,13 +149,14 @@ export class Game {
     if (this.orderManager) {
       const modifiers = this.getOrderModifiers();
       this.orderManager.maxOrders = modifiers.maxOrders;
+      this.orderManager.setBaseOrderTimeLimit(modifiers.baseOrderTimeLimit);
       this.orderManager.orderTimeMultiplier = modifiers.orderTimeMultiplier;
       this.orderManager.spawnRateMultiplier = modifiers.spawnRateMultiplier;
       this.orderManager.setDiningTables(modifiers.diningTableIds);
       this.orderManager.setCyclePhase(this.dayPhase);
       for (const order of this.orderManager.activeOrders) {
         const progressRatio = order.timeLimit > 0 ? order.elapsed / order.timeLimit : 0;
-        order.timeLimit = Math.round(this.config.orders.timeLimitMs * modifiers.orderTimeMultiplier);
+        order.timeLimit = Math.round(modifiers.baseOrderTimeLimit * modifiers.orderTimeMultiplier);
         order.elapsed = Math.min(order.timeLimit - 1, Math.max(0, Math.round(order.timeLimit * progressRatio)));
       }
     }
@@ -248,6 +255,11 @@ export class Game {
     return { success: true };
   }
 
+  toggleOrdersCollapsed() {
+    this.ordersCollapsed = !this.ordersCollapsed;
+    return this.ordersCollapsed;
+  }
+
   toggleSound() {
     this.progress.settings.soundEnabled = !this.progress.settings.soundEnabled;
     this.applySettings();
@@ -282,6 +294,11 @@ export class Game {
   getCurrentLevelTarget() {
     const targets = this.config.levels.deliveryTargets || [];
     return targets[Math.min(this.level - 1, targets.length - 1)] || 1;
+  }
+
+  getCurrentLevelDuration() {
+    const durations = this.config.match.levelDurationsMs || [this.config.match.durationMs];
+    return durations[Math.min(this.level - 1, durations.length - 1)] || this.config.match.durationMs;
   }
 
   getStatusText() {
@@ -458,10 +475,11 @@ export class Game {
     this.score = 0;
     this.completedOrders = 0;
     this.level = 1;
-    this.mainTimer = this.config.match.durationMs;
+    this.mainTimer = this.getCurrentLevelDuration();
 
     this.dayPhase = this.config.cycle.initialPhase;
     this.phaseTimer = 0;
+    this.phaseDuration = this.getCurrentLevelDuration() / 2;
     this.levelElapsedMs = 0;
 
     this.comboCount = 0;
@@ -488,9 +506,11 @@ export class Game {
   startNextLevel() {
     this.state = "playing";
     this.level += 1;
-    this.mainTimer = this.config.match.durationMs;
+    this.completedOrders = 0;
+    this.mainTimer = this.getCurrentLevelDuration();
     this.dayPhase = this.config.cycle.initialPhase;
     this.phaseTimer = 0;
+    this.phaseDuration = this.getCurrentLevelDuration() / 2;
     this.levelElapsedMs = 0;
     this.comboCount = 0;
     this.comboTimer = 0;
@@ -511,7 +531,8 @@ export class Game {
   }
 
   updateCycle(delta) {
-    this.levelElapsedMs = Math.min(this.config.match.durationMs, this.levelElapsedMs + delta);
+    const levelDuration = this.getCurrentLevelDuration();
+    this.levelElapsedMs = Math.min(levelDuration, this.levelElapsedMs + delta);
     const cyclePhases = ["iftar", "sahur"];
     const phaseIndex = Math.min(cyclePhases.length - 1, Math.floor(this.levelElapsedMs / this.phaseDuration));
     const nextPhase = cyclePhases[phaseIndex] || this.config.cycle.initialPhase;
