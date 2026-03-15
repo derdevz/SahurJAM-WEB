@@ -1,5 +1,5 @@
 const AUDIO_PATHS = {
-  ramadanCannon: "./audio/ramazan-topu.mp3",
+  ramadanCannon: "./audio/ramazan.mp3",
   sahurLoop: "./audio/sahur.wav",
   orderSuccess: "./audio/siparis-ok.wav",
   cookingLoop: "./audio/yemek-pisme.wav"
@@ -116,18 +116,9 @@ export class AudioManager {
       window.clearTimeout(this.cannonStopTimer);
       this.cannonStopTimer = null;
     }
-    const player = this.playClip(AUDIO_PATHS.ramadanCannon, {
-      volume: 0.5,
-      startAt: 11,
-      endAt: 14
+    this.playClip(AUDIO_PATHS.ramadanCannon, {
+      volume: 0.5
     });
-    if (!player) return;
-    this.cannonStopTimer = window.setTimeout(() => {
-      player.pause();
-      player.currentTime = 0;
-      this.clipPlayers.delete(player);
-      this.cannonStopTimer = null;
-    }, 3000);
   }
 
   playOrderSuccess() {

@@ -475,7 +475,7 @@ export class Game {
       if (e.code === "KeyT" && !e.repeat) {
         this.audio.playRamadanCannon();
         if (this.state !== "tutorial") {
-          this.notify("Ramazan topu test sesi caldi");
+          this.notify("Ramazan test sesi caldi");
         }
       }
 

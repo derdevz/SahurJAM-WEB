@@ -169,6 +169,22 @@ hudRefs.status.addEventListener("click", (event) => {
   }
 });
 
+hudRefs.status.addEventListener("pointerdown", (event) => {
+  const dismiss = event.target.closest("[data-tutorial-dismiss]");
+  if (dismiss) {
+    event.preventDefault();
+    game.audio.unlock();
+    game.dismissTutorial();
+    return;
+  }
+  const skip = event.target.closest("[data-tutorial-skip]");
+  if (skip) {
+    event.preventDefault();
+    game.audio.unlock();
+    game.skipTutorialForever();
+  }
+});
+
 window.addEventListener("keydown", (event) => {
   if (event.code === "Tab" && !event.repeat) {
     event.preventDefault();

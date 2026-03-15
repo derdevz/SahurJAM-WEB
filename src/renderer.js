@@ -538,8 +538,8 @@ export class Renderer {
     if (this.hud.controls) {
       this.hud.controls.textContent =
         game.state === "playing"
-          ? "WASD / yön tuşları ile hareket et • E veya Boşluk ile etkileşime geç • T ile Ramazan topu • Escape ile duraklat"
-          : "Enter veya buton ile başlat • R ile yeniden başlat • T ile Ramazan topu • Tab ile menüyü aç";
+          ? "WASD / yön tuşları ile hareket et • E veya Boşluk ile etkileşime geç • T ile Ramazan • Escape ile duraklat"
+          : "Enter veya buton ile başlat • R ile yeniden başlat • T ile Ramazan • Tab ile menüyü aç";
     }
 
     if (this.hud.hurma) this.hud.hurma.textContent = String(game.progress.totalHurma);
