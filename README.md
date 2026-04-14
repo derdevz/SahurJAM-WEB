@@ -30,7 +30,8 @@ Ardından `http://127.0.0.1:3000` adresini açın.
 Alternatif komutlar:
 
 - `npm run serve`: geliştirme sırasında yerel sunucuyu açar
-- `npm run check`: temel JavaScript sözdizimi kontrolünü çalıştırır
+- `npm run check`: repo doğrulaması ve JavaScript sözdizimi kontrolünü çalıştırır
+- `npm run build:pages`: GitHub Pages için dağıtım klasörü üretir
 
 ## Oynanış Özeti
 
